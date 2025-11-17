@@ -1,4 +1,6 @@
 from pydantic import BaseModel, Field
+from .models import UserRole, StudentStatus  # <--- 在這裡新增 StudentStatus
+from datetime import datetime # <--- 我們也需要這個，為 PickupNotificationOut 做準備
 from .models import UserRole
 
 class UserCreate(BaseModel):
@@ -38,7 +40,7 @@ class StudentCreate(StudentBase):
 
 class StudentOut(StudentBase):
     id: int
-    status: StudentStatus
+    status: StudentStatus # <--- 現在 Python 知道 StudentStatus 是什麼了
 
     class Config:
         orm_mode = True
@@ -53,7 +55,7 @@ class PickupNotificationOut(BaseModel):
     parent_id: int
     created_at: datetime
     status: str
-    student: StudentOut # 巢狀顯示學生資訊
+    student: StudentOut
 
     class Config:
         orm_mode = True
