@@ -1,39 +1,34 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
-from .. import crud, models, schemas
-from ..database import SessionLocal
+from .. import crud, schemas, security, database
 
-# 建立 API 路由
-router = APIRouter(
-    prefix="/users",
-    tags=["Users & Authentication"],
-)
+router = APIRouter()
 
-# Dependency
 def get_db():
-    db = SessionLocal()
+    db = database.SessionLocal()
     try:
         yield db
     finally:
         db.close()
 
-@router.post("/register", response_model=schemas.User)
+@router.post("/register", response_model=schemas.UserOut)
 def register_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
-    """
-    使用者註冊 API。
-    - 檢查手機號碼是否已被註冊。
-    - 創建新使用者並將密碼加密儲存。
-    """
     db_user = crud.get_user_by_phone(db, phone_number=user.phone_number)
     if db_user:
-        raise HTTPException(status_code=400, detail="Phone number already registered")
-    
-    # 預設新註冊的家長角色為 'parent'
-    if user.role not in ["parent", "teacher", "admin"]:
-        user.role = "parent"
-        
+        raise HTTPException(status_code=400, detail="此手機號碼已被註冊")
     return crud.create_user(db=db, user=user)
 
-# 待辦：
-# 1. 登入 API (/token)
-# 2. 簡訊驗證 API
+@router.post("/token", response_model=schemas.Token)
+def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    user = crud.get_user_by_phone(db, phone_number=form_data.username)
+    if not user or not security.verify_password(form_data.password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="手機號碼或密碼不正確",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    access_token = security.create_access_token(
+        data={"sub": user.phone_number}
+    )
+    return {"access_token": access_token, "token_type": "bearer"}

@@ -1,17 +1,17 @@
-from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, DateTime, func
-from sqlalchemy.orm import relationship
+from sqlalchemy import Column, Integer, String, Enum
 from .database import Base
+import enum
+
+class UserRole(str, enum.Enum):
+    parent = "parent"
+    teacher = "teacher"
+    admin = "admin"
 
 class User(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
-    phone_number = Column(String, unique=True, index=True)
-    hashed_password = Column(String)
+    phone_number = Column(String, unique=True, index=True, nullable=False)
+    hashed_password = Column(String, nullable=False)
     full_name = Column(String)
-    role = Column(String, default="parent") # 'parent', 'teacher', 'admin'
-    is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=func.now())
-
-    # 未來可以添加關係
-    # children = relationship("Student", back_populates="parent")
+    role = Column(Enum(UserRole), default=UserRole.parent)
