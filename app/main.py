@@ -10,7 +10,7 @@ models.Base.metadata.create_all(bind=engine)
 app = FastAPI(
     title="補習班接送系統 API",
     description="這是一個用於補習班接送通知系統的後端 API。",
-    version="0.2.0", # 版本升級
+    version="0.2.1", # 版本升級
 )
 
 # 引入新的 API 路由
@@ -24,7 +24,7 @@ def read_root():
     根目錄端點，用於檢查 API 是否成功運行。
     訪問時會回傳一個歡迎訊息。
     """
-    return {"message": "補習班接送系統 API 已成功運行！版本 0.2.0"}
+    return {"message": "補習班接送系統 API 已成功運行！版本 0.2.1"}
 
 @app.get("/health", tags=["系統狀態 (System Status)"])
 def health_check():
