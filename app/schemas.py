@@ -1,8 +1,8 @@
 from pydantic import BaseModel, Field
-from .models import UserRole, StudentStatus  # <--- 在這裡新增 StudentStatus
-from datetime import datetime # <--- 我們也需要這個，為 PickupNotificationOut 做準備
-from .models import UserRole
+from .models import UserRole, StudentStatus
+from datetime import datetime
 
+# --- User ---
 class UserCreate(BaseModel):
     phone_number: str
     password: str = Field(min_length=8)
@@ -17,21 +17,19 @@ class UserOut(BaseModel):
     class Config:
         orm_mode = True
 
+# --- Token ---
 class Token(BaseModel):
     access_token: str
     token_type: str
-# ... (檔案上方原有的 UserCreate, UserOut, Token 類別保持不變) ...
 
+# --- Teacher ---
 class TeacherCreate(BaseModel):
     phone_number: str
     password: str = Field(min_length=8)
     full_name: str
     role: UserRole = Field(default=UserRole.teacher, description="可以是 'teacher' 或 'admin'")
 
-# ... (檔案上方原有的模型保持不變) ...
-from datetime import datetime
-
-# --- 學生相關模型 ---
+# --- Student ---
 class StudentBase(BaseModel):
     full_name: str
 
@@ -40,12 +38,12 @@ class StudentCreate(StudentBase):
 
 class StudentOut(StudentBase):
     id: int
-    status: StudentStatus # <--- 現在 Python 知道 StudentStatus 是什麼了
+    status: StudentStatus
 
     class Config:
         orm_mode = True
 
-# --- 接送通知相關模型 ---
+# --- Pickup Notification ---
 class PickupNotificationCreate(BaseModel):
     student_id: int
 
@@ -60,12 +58,6 @@ class PickupNotificationOut(BaseModel):
     class Config:
         orm_mode = True
 
-# ... (檔案上方原有的模型保持不變) ...
-
-class PickupNotificationOut(BaseModel):
-    # ... (這個類別保持不變) ...
-
-# --- 新增的模型 ---
 class PickupNotificationCompleteOut(BaseModel):
     message: str
     notification_id: int
