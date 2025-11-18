@@ -70,3 +70,29 @@ def create_pickup_notification(db: Session, parent_id: int, student_id: int):
     db.commit()
     db.refresh(db_notification)
     return db_notification
+
+# ... (檔案上方原有的函式保持不變) ...
+
+def get_notification_by_id(db: Session, notification_id: int):
+    """根據 ID 獲取接送通知。"""
+    return db.query(models.PickupNotification).filter(models.PickupNotification.id == notification_id).first()
+
+def complete_pickup_notification(db: Session, notification_id: int):
+    """完成一個接送通知。"""
+    # 1. 找到該通知
+    db_notification = get_notification_by_id(db, notification_id)
+    if not db_notification:
+        return None
+
+    # 2. 更新通知狀態
+    db_notification.status = "completed"
+    
+    # 3. 更新學生狀態
+    db_student = db_notification.student
+    if db_student:
+        db_student.status = models.StudentStatus.departed
+    
+    db.commit()
+    db.refresh(db_notification)
+    
+    return db_notification

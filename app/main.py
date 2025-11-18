@@ -7,8 +7,8 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="校園接送系統 API",
-    description="這是一個由 Manus AI 協助開發的專案，現已加入核心接送流程。",
-    version="0.4.0"
+    description="這是一個由 Manus AI 協助開發的專案，現已包含完整的核心接送生命週期。",
+    version="0.5.0"
 )
 
 # 包含各個模組的路由
@@ -18,7 +18,7 @@ app.include_router(pickups.router, prefix="/api/v1/pickups", tags=["Pickup Proce
 
 @app.get("/")
 def read_root():
-    return {"message": "補習班接送系統 API 已成功運行！版本 0.4.0"}
+    return {"message": "補習班接送系統 API 已成功運行！版本 0.5.0"}
 
 @app.get("/health")
 def health_check():

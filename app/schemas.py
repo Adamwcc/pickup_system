@@ -59,3 +59,17 @@ class PickupNotificationOut(BaseModel):
 
     class Config:
         orm_mode = True
+
+# ... (檔案上方原有的模型保持不變) ...
+
+class PickupNotificationOut(BaseModel):
+    # ... (這個類別保持不變) ...
+
+# --- 新增的模型 ---
+class PickupNotificationCompleteOut(BaseModel):
+    message: str
+    notification_id: int
+    student_final_status: StudentStatus
+
+    class Config:
+        orm_mode = True
