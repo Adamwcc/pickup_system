@@ -2,7 +2,10 @@ from sqlalchemy.orm import Session
 from . import models, schemas, security
 
 def get_user_by_phone(db: Session, phone_number: str):
-    return db.query(models.User).filter(models.User.phone_number == phone_number).first()
+    return db.query(models.User).filter(
+        models.User.phone_number == phone_number, 
+        models.User.is_active == True  # <--- 新增這個過濾條件
+    ).first()
 
 def create_user(db: Session, user: schemas.UserCreate):
     hashed_password = security.get_password_hash(user.password)
@@ -51,7 +54,10 @@ def link_parent_to_student(db: Session, parent_id: int, student_id: int):
     return link
 
 def get_student_by_id(db: Session, student_id: int):
-    return db.query(models.Student).filter(models.Student.id == student_id).first()
+    return db.query(models.Student).filter(
+        models.Student.id == student_id,
+        models.Student.is_active == True # <--- 新增這個過濾條件
+    ).first()
 
 # --- 接送通知相關 ---
 def create_pickup_notification(db: Session, parent_id: int, student_id: int):
@@ -96,3 +102,28 @@ def complete_pickup_notification(db: Session, notification_id: int):
     db.refresh(db_notification)
     
     return db_notification
+
+    # ... (檔案上方原有的函式保持不變) ...
+
+def get_user_by_id(db: Session, user_id: int):
+    """一個輔助函式，根據 ID 獲取使用者，不過濾 is_active。"""
+    return db.query(models.User).filter(models.User.id == user_id).first()
+
+def deactivate_user(db: Session, user_id: int):
+    """邏輯刪除一個使用者。"""
+    db_user = get_user_by_id(db, user_id)
+    if db_user:
+        db_user.is_active = False
+        db.commit()
+        db.refresh(db_user)
+    return db_user
+
+def deactivate_student(db: Session, student_id: int):
+    """邏輯刪除一個學生。"""
+    db_student = get_student_by_id(db, student_id) # 這裡用的是過濾 active 的版本
+    if db_student:
+        db_student.is_active = False
+        db.commit()
+        db.refresh(db_student)
+    return db_student
+
