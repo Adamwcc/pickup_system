@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status # <--- 確保 status 在這裡
 from sqlalchemy.orm import Session
 
 from .. import crud, schemas, models
@@ -21,11 +21,7 @@ def create_new_teacher(
     if db_user:
         raise HTTPException(status_code=400, detail="此手機號碼已被註冊")
     
-    # 使用新的 crud 函式來建立教職員
     return crud.create_teacher(db=db, user=teacher_data)
-
-
-    # ... (檔案上方原有的 create_new_teacher 函式保持不變) ...
 
 @router.delete("/users/{user_id}", response_model=schemas.UserOut, summary="停用使用者帳號 (邏輯刪除)")
 def delete_user(
@@ -62,9 +58,6 @@ def delete_student(
 
     return crud.deactivate_student(db=db, student_id=student_id)
 
-
-    # ... (檔案上方原有的 delete_user 和 delete_student 函式保持不變) ...
-
 @router.patch(
     "/users/{user_id}/password", 
     status_code=status.HTTP_204_NO_CONTENT, 
@@ -83,7 +76,6 @@ def admin_reset_user_password(
     if not user_to_update:
         raise HTTPException(status_code=404, detail="找不到該使用者")
 
-    # (可選) 增加一個安全措施：不允許管理員透過這個 API 修改自己的密碼
     if user_to_update.id == admin_user.id:
         raise HTTPException(
             status_code=400, 
@@ -93,5 +85,3 @@ def admin_reset_user_password(
     crud.update_user_password(db, user_id=user_id, new_password=password_data.new_password)
     
     return
-
-
