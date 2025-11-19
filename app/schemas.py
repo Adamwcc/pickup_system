@@ -65,3 +65,14 @@ class PickupNotificationCompleteOut(BaseModel):
 
     class Config:
         orm_mode = True
+
+        # ... (檔案上方原有的模型保持不變) ...
+
+# --- 用於使用者修改自己密碼的模型 ---
+class UserUpdatePassword(BaseModel):
+    old_password: str
+    new_password: str = Field(min_length=8)
+
+# --- 用於管理員重設使用者密碼的模型 ---
+class AdminResetPassword(BaseModel):
+    new_password: str = Field(min_length=8)

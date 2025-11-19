@@ -62,3 +62,36 @@ def delete_student(
 
     return crud.deactivate_student(db=db, student_id=student_id)
 
+
+    # ... (檔案上方原有的 delete_user 和 delete_student 函式保持不變) ...
+
+@router.patch(
+    "/users/{user_id}/password", 
+    status_code=status.HTTP_204_NO_CONTENT, 
+    summary="管理員重設使用者密碼"
+)
+def admin_reset_user_password(
+    user_id: int,
+    password_data: schemas.AdminResetPassword,
+    db: Session = Depends(get_db),
+    admin_user: models.User = Depends(get_current_admin_user)
+):
+    """
+    由管理員強制重設指定使用者的密碼，無需知道舊密碼。
+    """
+    user_to_update = crud.get_user_by_id(db, user_id)
+    if not user_to_update:
+        raise HTTPException(status_code=404, detail="找不到該使用者")
+
+    # (可選) 增加一個安全措施：不允許管理員透過這個 API 修改自己的密碼
+    if user_to_update.id == admin_user.id:
+        raise HTTPException(
+            status_code=400, 
+            detail="請使用'修改自己的密碼'功能來更改您的密碼"
+        )
+
+    crud.update_user_password(db, user_id=user_id, new_password=password_data.new_password)
+    
+    return
+
+

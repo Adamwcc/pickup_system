@@ -127,3 +127,15 @@ def deactivate_student(db: Session, student_id: int):
         db.refresh(db_student)
     return db_student
 
+# ... (檔案上方原有的函式保持不變) ...
+
+def update_user_password(db: Session, user_id: int, new_password: str):
+    """更新指定使用者的密碼。"""
+    db_user = get_user_by_id(db, user_id=user_id)
+    if db_user:
+        hashed_password = security.get_password_hash(new_password)
+        db_user.hashed_password = hashed_password
+        db.commit()
+        db.refresh(db_user)
+    return db_user
+
