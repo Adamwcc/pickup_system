@@ -3,6 +3,8 @@ from sqlalchemy.orm import Session
 
 from .. import crud, schemas, models
 from ..dependencies import get_db, get_current_user
+from typing import List # <--- 確保在檔案頂部匯入了 List
+from datetime import datetime # <--- 確保在檔案頂部匯入了 datetime
 
 router = APIRouter()
 
@@ -73,3 +75,18 @@ def complete_pickup(
         "notification_id": completed_notification.id,
         "student_final_status": completed_notification.student.status
     }
+
+# ... (檔案上方原有的函式保持不變) ...
+
+
+@router.get("/predictions/today", response_model=List[schemas.PickupPredictionOut], summary="獲取今日的智慧預測列表")
+def get_today_predictions(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user) # 確保只有登入使用者能看
+):
+    """
+    獲取系統根據歷史數據分析出的，今天最有可能被接送的「常客」學生列表。
+    """
+    today = datetime.utcnow().date()
+    predictions = db.query(models.PickupPrediction).filter(func.date(models.PickupPrediction.prediction_date) == today).all()
+    return predictions

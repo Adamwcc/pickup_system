@@ -63,3 +63,19 @@ class PickupNotification(Base):
     
     student = relationship("Student", back_populates="notifications")
     parent = relationship("User")
+
+    # ... (檔案上方原有的模型保持不變) ...
+
+class PickupPrediction(Base):
+    """用於儲存每日接送預測結果的資料表。"""
+    __tablename__ = "pickup_predictions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    prediction_date = Column(DateTime, index=True, nullable=False) # 預測的日期
+    student_id = Column(Integer, ForeignKey("students.id"), nullable=False)
+    
+    # 預測的理由或信心分數，未來可擴充
+    reason = Column(String, default="高頻率常客") 
+    
+    student = relationship("Student")
+

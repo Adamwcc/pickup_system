@@ -7,8 +7,8 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="校園接送系統 API",
-    description="這是一個由 Manus AI 協助開發的專案，現已加入密碼管理功能。",
-    version="0.8.0" #<--- 版本更新
+    description="這是一個由 Manus AI 協助開發的專案，現已加入智慧預測提示功能。",
+    version="0.9.0" #<--- 版本更新
 )
 
 # 包含各個模組的路由

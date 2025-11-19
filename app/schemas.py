@@ -76,3 +76,15 @@ class UserUpdatePassword(BaseModel):
 # --- 用於管理員重設使用者密碼的模型 ---
 class AdminResetPassword(BaseModel):
     new_password: str = Field(min_length=8)
+
+
+    # ... (檔案上方原有的模型保持不變) ...
+
+# --- 用於智慧預測提示的模型 ---
+class PickupPredictionOut(BaseModel):
+    prediction_date: datetime
+    student: StudentOut # 直接複用我們已有的 StudentOut 模型
+
+    class Config:
+        from_attributes = True
+
