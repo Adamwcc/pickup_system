@@ -11,8 +11,9 @@ class UserRole(str, enum.Enum):
     admin = "admin"
 
 class StudentStatus(str, enum.Enum):
-    in_class = "在校"
-    waiting_pickup = "等待接送"
+    in_class = "在班"
+    can_be_picked_up = "可接送"
+    parent_is_coming = "家長已出發" # <--- 修改這一行
     departed = "已離校"
 
 # --- 中間表 (Association Table) ---

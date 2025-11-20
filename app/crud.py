@@ -71,7 +71,7 @@ def create_pickup_notification(db: Session, parent_id: int, student_id: int):
     # 2. 更新學生狀態
     db_student = get_student_by_id(db, student_id=student_id)
     if db_student:
-        db_student.status = models.StudentStatus.waiting_pickup
+        db_student.status = models.StudentStatus.parent_is_coming
     
     db.commit()
     db.refresh(db_notification)
@@ -139,3 +139,18 @@ def update_user_password(db: Session, user_id: int, new_password: str):
         db.refresh(db_user)
     return db_user
 
+def update_student_status(db: Session, student_id: int, new_status: models.StudentStatus):
+    """更新指定學生的狀態。"""
+    db_student = get_student_by_id(db, student_id=student_id)
+    if db_student:
+        db_student.status = new_status
+        db.commit()
+        db.refresh(db_student)
+    return db_student
+
+def get_students_by_teacher(db: Session, teacher_id: int):
+    """根據老師 ID 獲取其所有活躍的學生。"""
+    return db.query(models.Student).filter(
+        models.Student.teacher_id == teacher_id,
+        models.Student.is_active == True
+    ).all()

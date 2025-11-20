@@ -46,3 +46,21 @@ def get_current_admin_user(current_user: models.User = Depends(get_current_user)
             detail="權限不足，需要管理員權限"
         )
     return current_user
+
+def get_current_teacher_user(current_user: models.User = Depends(get_current_user)) -> models.User:
+    """
+    一個依賴項，用於驗證當前使用者是否為老師或管理員。
+    
+    這個函式會被注入到需要「老師」權限的 API 端點中。
+    它首先會呼叫 get_current_user 來確保使用者已登入。
+    然後，它會檢查該使用者的角色。
+    
+    我們在這裡也允許 'admin' 角色通過，因為在我們的系統設計中，
+    管理員應該擁有老師的所有權限，這被稱為「權限繼承」。
+    """
+    if current_user.role not in [models.UserRole.teacher, models.UserRole.admin]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="權限不足，需要老師或管理員身份"
+        )
+    return current_user
