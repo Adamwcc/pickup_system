@@ -1,5 +1,8 @@
-from sqlalchemy.orm import Session
+from typing import List, Optional
+from sqlalchemy import case
+from sqlalchemy.orm import Session, joinedload
 from . import models, schemas, security
+
 
 def get_user_by_phone(db: Session, phone_number: str):
     return db.query(models.User).filter(
@@ -37,7 +40,6 @@ def create_teacher(db: Session, user: schemas.TeacherCreate):
     return db_user
 
 # ... (檔案上方原有的函式保持不變) ...
-from . import models
 
 # --- 學生相關 ---
 def create_student(db: Session, student: schemas.StudentCreate):
@@ -154,3 +156,42 @@ def get_students_by_teacher(db: Session, teacher_id: int):
         models.Student.teacher_id == teacher_id,
         models.Student.is_active == True
     ).all()
+
+    # 位於 app/crud.py 的最下方
+
+def get_dashboard_students(
+    db: Session, 
+    teacher_id: Optional[int] = None, 
+    statuses: Optional[List[models.StudentStatus]] = None
+):
+    """
+    一個功能強大的動態查詢函式，用於獲取儀表板所需的學生列表。
+    - 可根據 teacher_id 進行過濾。
+    - 可根據一個或多個 status 進行過濾。
+    - 結果會自動按照 '家長已出發' > '可接送' > '在班' 的順序排序。
+    """
+    # 1. 建立基礎查詢，並預先載入 teacher 資訊以避免 N+1 問題
+    query = db.query(models.Student).options(joinedload(models.Student.teacher))
+
+    # 2. 動態加入 teacher_id 過濾條件
+    if teacher_id is not None:
+        query = query.filter(models.Student.teacher_id == teacher_id)
+
+    # 3. 動態加入 status 過濾條件
+    if statuses:
+        query = query.filter(models.Student.status.in_(statuses))
+    
+    # 4. 加入 is_active 過濾條件，我們不關心已停用的學生
+    query = query.filter(models.Student.is_active == True)
+
+    # 5. 定義自訂排序邏輯
+    order_logic = case(
+        (models.Student.status == models.StudentStatus.parent_is_coming, 1),
+        (models.Student.status == models.StudentStatus.can_be_picked_up, 2),
+        (models.Student.status == models.StudentStatus.in_class, 3),
+        (models.Student.status == models.StudentStatus.departed, 4),
+        else_=5
+    )
+
+    # 6. 應用排序邏輯並執行查詢
+    return query.order_by(order_logic).all()

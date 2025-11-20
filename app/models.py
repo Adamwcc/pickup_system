@@ -8,7 +8,9 @@ from datetime import datetime
 class UserRole(str, enum.Enum):
     parent = "parent"
     teacher = "teacher"
+    receptionist = "receptionist" # <--- 新增這一行
     admin = "admin"
+
 
 class StudentStatus(str, enum.Enum):
     in_class = "在班"

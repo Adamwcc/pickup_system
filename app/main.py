@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from .database import engine, Base
 # 在下面這一行中，加入 teachers
-from .routers import auth, admin, pickups, websockets, users, teachers 
+from .routers import auth, admin, pickups, websockets, users, teachers, dashboard
 
 # 應用程式啟動時，自動建立資料庫檔案和資料表
 Base.metadata.create_all(bind=engine)
@@ -20,6 +20,7 @@ app.include_router(admin.router, prefix="/api/v1/admin", tags=["Admin Management
 app.include_router(teachers.router, prefix="/api/v1/teachers", tags=["Teacher Actions"])
 app.include_router(pickups.router, prefix="/api/v1/pickups", tags=["Pickup Process"])
 app.include_router(websockets.router, prefix="/api/v1", tags=["Real-time"])
+app.include_router(dashboard.router, prefix="/api/v1/dashboard", tags=["Dashboard"])
 
 @app.get("/")
 def read_root():
