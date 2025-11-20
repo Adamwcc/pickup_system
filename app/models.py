@@ -44,8 +44,9 @@ class Student(Base):
     id = Column(Integer, primary_key=True, index=True)
     full_name = Column(String, index=True, nullable=False)
     status = Column(Enum(StudentStatus), default=StudentStatus.in_class)
-    is_active = Column(Boolean, default=True) # <--- 新增這一行
-    
+    is_active = Column(Boolean, default=True)
+    teacher_id = Column(Integer, ForeignKey("users.id"), nullable=True) # <--- 新增這一行
+
     parents = relationship(
         "User", 
         secondary="parent_student_link", 
@@ -53,6 +54,8 @@ class Student(Base):
     )
     
     notifications = relationship("PickupNotification", back_populates="student")
+    teacher = relationship("User") # <--- 新增這一行
+
 
 class PickupNotification(Base):
     __tablename__ = "pickup_notifications"
