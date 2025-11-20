@@ -32,8 +32,17 @@ def start_pickup_process(
         raise HTTPException(status_code=403, detail="權限不足，您不是該學生的家長")
 
     # 驗證3：學生是否處於可被接送的狀態
-    if student.status != models.StudentStatus.in_class:
-        raise HTTPException(status_code=400, detail=f"學生目前狀態為'{student.status.value}'，無法發起接送")
+    # 學生可以處於 '在班' (家長主動發起) 或 '可接送' (老師通知後，家長發起) 狀態
+    allowed_statuses = [
+        models.StudentStatus.in_class, 
+        models.StudentStatus.can_be_picked_up
+    ]
+    
+    if student.status not in allowed_statuses:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"學生 {student.full_name} 目前狀態為 '{student.status.value}'，無法發起接送"
+        )
 
     # 建立接送通知
     return crud.create_pickup_notification(db=db, parent_id=current_user.id, student_id=student_id)
