@@ -1,77 +1,82 @@
-from fastapi import Depends, HTTPException, status, Query, jwt
+# 檔案路徑: pickup_system/app/dependencies.py
+
+from fastapi import Depends, HTTPException, status, Query
+from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
-from jose import JWTError
-from . import crud, models, security
-from .database import SessionLocal
+from jose import JWTError, jwt
+
+from . import crud, models, security, database
+
+# 建立一個 OAuth2 "流程" 的實例，它指向獲取 token 的 API 端點
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token")
 
 def get_db():
-    db = SessionLocal()
+    """
+    一個 FastAPI 的依賴項，用於為每個請求建立一個獨立的資料庫會話。
+    """
+    db = database.SessionLocal()
     try:
         yield db
     finally:
         db.close()
 
-def get_current_user(token: str = Depends(security.oauth2_scheme), db: Session = Depends(get_db)) -> models.User:
+def get_current_user(
+    token: str = Depends(oauth2_scheme), 
+    db: Session = Depends(get_db)
+):
     """
-    解析 JWT token，獲取當前使用者。
+    一個依賴項，用於從 Authorization header 中的 Bearer token 解析出當前使用者。
     """
-    from jose import JWTError
-    
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="無法驗證憑證",
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
-        payload = security.jwt.decode(token, security.SECRET_KEY, algorithms=[security.ALGORITHM])
+        payload = jwt.decode(token, security.SECRET_KEY, algorithms=[security.ALGORITHM])
         phone_number: str = payload.get("sub")
         if phone_number is None:
             raise credentials_exception
     except JWTError:
         raise credentials_exception
-        
+    
     user = crud.get_user_by_phone(db, phone_number=phone_number)
     if user is None:
         raise credentials_exception
     return user
 
-def get_current_admin_user(current_user: models.User = Depends(get_current_user)) -> models.User:
+def get_current_admin_user(
+    current_user: models.User = Depends(get_current_user)
+):
     """
-    一個依賴項，用來確保目前使用者是 admin。
-    如果不是，就拋出 403 Forbidden 錯誤。
+    一個依賴項，用於確保當前使用者是管理員 (admin)。
     """
     if current_user.role != models.UserRole.admin:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
+            status_code=status.HTTP_403_FORBIDDEN, 
             detail="權限不足，需要管理員權限"
         )
     return current_user
 
-def get_current_teacher_user(current_user: models.User = Depends(get_current_user)) -> models.User:
+def get_current_teacher_user(
+    current_user: models.User = Depends(get_current_user)
+):
     """
-    一個依賴項，用於驗證當前使用者是否為老師或管理員。
-    
-    這個函式會被注入到需要「老師」權限的 API 端點中。
-    它首先會呼叫 get_current_user 來確保使用者已登入。
-    然後，它會檢查該使用者的角色。
-    
-    我們在這裡也允許 'admin' 角色通過，因為在我們的系統設計中，
-    管理員應該擁有老師的所有權限，這被稱為「權限繼承」。
+    一個依賴項，用於確保當前使用者至少是老師 (teacher) 或更高權限。
     """
-    if current_user.role not in [models.UserRole.teacher, models.UserRole.admin]:
+    allowed_roles = [models.UserRole.teacher, models.UserRole.admin]
+    if current_user.role not in allowed_roles:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="權限不足，需要老師或管理員身份"
+            detail="權限不足，需要教師或管理員權限"
         )
     return current_user
 
-
-    async def get_current_user_from_token(
+async def get_current_user_from_token(
     token: str = Query(...), 
     db: Session = Depends(get_db)
 ):
     """一個專門給 WebSocket 用的依賴項，從查詢參數中獲取 token 並驗證使用者。"""
-    # --- 以下所有行，都必須向右縮排 ---
     try:
         payload = jwt.decode(token, security.SECRET_KEY, algorithms=[security.ALGORITHM])
         phone_number: str = payload.get("sub")
@@ -82,3 +87,4 @@ def get_current_teacher_user(current_user: models.User = Depends(get_current_use
     
     user = crud.get_user_by_phone(db, phone_number=phone_number)
     return user
+
