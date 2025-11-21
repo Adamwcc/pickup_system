@@ -1,43 +1,47 @@
+# 檔案路徑: pickup_system/app/routers/teachers.py
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
-from ..routers.websockets import manager
 
 from .. import crud, schemas, models
-from ..dependencies import get_db, get_current_teacher_user # <--- 我們將在下一步建立這個依賴
+from ..dependencies import get_db, get_current_teacher_user
+from ..routers.websockets import manager # 確保從正確的路徑匯入 manager
 
 router = APIRouter()
 
-@router.patch("/students/{student_id}/status/can-be-picked-up", response_model=schemas.StudentOut, summary="標記學生為'可接送'")
-def mark_student_as_ready(
+@router.patch(
+    "/students/{student_id}/status/can-be-picked-up",
+    response_model=schemas.StudentOut,
+    summary="將學生標記為可接送"
+)
+def mark_student_as_can_be_picked_up(
     student_id: int,
     db: Session = Depends(get_db),
     current_teacher: models.User = Depends(get_current_teacher_user)
 ):
     """
-    由帶班老師將自己班上的學生狀態更新為'可接送'。
-    這個動作會觸發一個給家長的通知（模擬）。
+    老師將自己班上的某個學生狀態標記為「可接送」。
+    這個操作目前不會主動推播通知，而是等待家長發起接送時，狀態檢查會通過。
     """
-    db_student = crud.get_student_by_id(db, student_id=student_id)
-
-    # --- 權限驗證 ---
-    if not db_student:
+    # 1. 權限與學生存在性驗證
+    student = crud.get_student_by_id(db, student_id=student_id)
+    if not student:
         raise HTTPException(status_code=404, detail="找不到該學生")
-    
-    # 核心權限檢查：確保要操作的學生，其 teacher_id 與當前登入的老師 ID 相同
-    if db_student.teacher_id != current_teacher.id:
-        raise HTTPException(status_code=403, detail="權限不足：這不是您班上的學生")
+    if student.teacher_id != current_teacher.id:
+        raise HTTPException(status_code=403, detail="權限不足，這不是您班上的學生")
 
-    # --- 更新狀態 ---
-    updated_student = crud.update_student_status(db, student_id=student_id, new_status=models.StudentStatus.can_be_picked_up)
-    
-    # --- (模擬) 觸發家長通知 ---
-    print(f"--- 推播通知 ---")
-    print(f"正在向學生 {db_student.full_name} 的家長發送通知：課程已完成，可以準備接送了。")
-    print(f"-----------------")
+    # 2. 業務邏輯檢查：只有「在班」的學生才能被標記為「可接送」
+    if student.status != models.StudentStatus.in_class:
+        raise HTTPException(
+            status_code=400,
+            detail=f"操作無效：學生 {student.full_name} 目前狀態為 '{student.status.value}'，無法標記為可接送"
+        )
 
-    return updated_student
-
+    # 3. 更新學生狀態
+    return crud.update_student_status(
+        db, student_id=student_id, new_status=models.StudentStatus.can_be_picked_up
+    )
 
 @router.patch(
     "/students/{student_id}/status/homework-pending",
@@ -49,7 +53,10 @@ async def mark_student_as_homework_pending(
     db: Session = Depends(get_db),
     current_teacher: models.User = Depends(get_current_teacher_user)
 ):
-    # ... (此函式的內容與我上一則訊息中的完全一樣，請直接複製過來) ...
+    """
+    老師將自己班上的某個學生狀態標記為「作業較多」。
+    這個操作會觸發一個 WebSocket 推播給該學生的所有家長。
+    """
     # 1. 權限與學生存在性驗證
     student = crud.get_student_by_id(db, student_id=student_id)
     if not student:
@@ -78,3 +85,4 @@ async def mark_student_as_homework_pending(
             await manager.send_personal_message(notification_payload, user_id=parent.id)
 
     return updated_student
+
