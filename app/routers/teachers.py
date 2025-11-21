@@ -39,7 +39,7 @@ def mark_student_as_ready(
     return updated_student
 
 
-    @router.patch(
+@router.patch(
     "/students/{student_id}/status/homework-pending",
     response_model=schemas.StudentOut,
     summary="將學生標記為作業較多"
