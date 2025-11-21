@@ -71,6 +71,7 @@ def get_current_teacher_user(current_user: models.User = Depends(get_current_use
     db: Session = Depends(get_db)
 ):
     """一個專門給 WebSocket 用的依賴項，從查詢參數中獲取 token 並驗證使用者。"""
+    # --- 以下所有行，都必須向右縮排 ---
     try:
         payload = jwt.decode(token, security.SECRET_KEY, algorithms=[security.ALGORITHM])
         phone_number: str = payload.get("sub")
