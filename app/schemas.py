@@ -4,20 +4,30 @@ from datetime import datetime
 from typing import List, Optional # 確保匯入了 List 和 Optional
 
 
+
+# --- 使用者相關 ---
+class UserBase(BaseModel):
+    """使用者模型的基礎，包含通用欄位。"""
+    phone_number: str
+    full_name: Optional[str] = None
+
+    
 # --- User ---
 class UserCreate(BaseModel):
     phone_number: str
     password: str = Field(min_length=8)
     full_name: str
 
+# 現在，下面的 UserOut 才能正確找到它繼承的對象
 class UserOut(UserBase):
     id: int
     role: UserRole
-    # --- 新增 institution 欄位 ---
     institution: Optional[InstitutionOut] = None
 
     class Config:
         from_attributes = True
+
+
 
 # --- Token ---
 class Token(BaseModel):
