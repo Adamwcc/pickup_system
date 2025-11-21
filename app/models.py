@@ -4,6 +4,18 @@ from .database import Base
 import enum
 from datetime import datetime
 
+# 位於 app/models.py 的頂部
+
+class Institution(Base):
+    __tablename__ = "institutions"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, index=True, nullable=False)
+    code = Column(String, unique=True, index=True, nullable=False)
+
+    students = relationship("Student", back_populates="institution")
+    staff = relationship("User", back_populates="institution")
+
+
 # --- Enums ---
 class UserRole(str, enum.Enum):
     parent = "parent"
@@ -33,7 +45,9 @@ class User(Base):
     hashed_password = Column(String, nullable=False)
     full_name = Column(String)
     role = Column(Enum(UserRole), default=UserRole.parent)
-    is_active = Column(Boolean, default=True) # <--- 新增這一行
+    is_active = Column(Boolean, default=True)
+    institution_id = Column(Integer, ForeignKey("institutions.id"), nullable=True)
+    institution = relationship("Institution", back_populates="staff")
     
     # 使用 back_populates 來建立雙向關聯，這更為穩健
     children = relationship(
@@ -48,7 +62,11 @@ class Student(Base):
     full_name = Column(String, index=True, nullable=False)
     status = Column(Enum(StudentStatus), default=StudentStatus.in_class)
     is_active = Column(Boolean, default=True)
-    teacher_id = Column(Integer, ForeignKey("users.id"), nullable=True) # <--- 新增這一行
+    teacher_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+     # --- 新增以下兩行 ---
+    institution_id = Column(Integer, ForeignKey("institutions.id"), nullable=False)
+    institution = relationship("Institution", back_populates="students")
+    # --- 結束新增 ---
 
     parents = relationship(
         "User", 
