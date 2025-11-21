@@ -3,7 +3,19 @@ from .models import UserRole, StudentStatus
 from datetime import datetime
 from typing import List, Optional # 確保匯入了 List 和 Optional
 
+# --- 機構相關 ---
+class InstitutionBase(BaseModel):
+    name: str
 
+class InstitutionCreate(InstitutionBase):
+    code: str
+
+class InstitutionOut(InstitutionBase):
+    id: int
+    code: str
+
+    class Config:
+        from_attributes = True
 
 # --- 使用者相關 ---
 class UserBase(BaseModel):
@@ -103,19 +115,7 @@ class PickupPredictionOut(BaseModel):
     class Config:
         from_attributes = True
 
-# --- 機構相關 ---
-class InstitutionBase(BaseModel):
-    name: str
 
-class InstitutionCreate(InstitutionBase):
-    code: str
-
-class InstitutionOut(InstitutionBase):
-    id: int
-    code: str
-
-    class Config:
-        from_attributes = True
 
 # --- 學生相關 ---
 class StudentCreateByTeacher(BaseModel):
