@@ -1,6 +1,8 @@
 from pydantic import BaseModel, Field
 from .models import UserRole, StudentStatus
 from datetime import datetime
+from typing import List, Optional # 確保匯入了 List 和 Optional
+
 
 # --- User ---
 class UserCreate(BaseModel):
@@ -8,14 +10,14 @@ class UserCreate(BaseModel):
     password: str = Field(min_length=8)
     full_name: str
 
-class UserOut(BaseModel):
+class UserOut(UserBase):
     id: int
-    phone_number: str
-    full_name: str
     role: UserRole
+    # --- 新增 institution 欄位 ---
+    institution: Optional[InstitutionOut] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 # --- Token ---
 class Token(BaseModel):
@@ -39,9 +41,12 @@ class StudentCreate(StudentBase):
 class StudentOut(StudentBase):
     id: int
     status: StudentStatus
+    teacher: Optional[UserOut] = None
+    # --- 新增 institution 欄位 ---
+    institution: Optional[InstitutionOut] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 # --- Pickup Notification ---
 class PickupNotificationCreate(BaseModel):
@@ -88,3 +93,27 @@ class PickupPredictionOut(BaseModel):
     class Config:
         from_attributes = True
 
+# --- 機構相關 ---
+class InstitutionBase(BaseModel):
+    name: str
+
+class InstitutionCreate(InstitutionBase):
+    code: str
+
+class InstitutionOut(InstitutionBase):
+    id: int
+    code: str
+
+    class Config:
+        from_attributes = True
+
+# --- 學生相關 ---
+class StudentCreateByTeacher(BaseModel):
+    """老師新增學生時使用的模型"""
+    full_name: str
+
+# --- 家長綁定相關 ---
+class ParentClaimStudent(BaseModel):
+    """家長認領學生時使用的模型"""
+    institution_code: str
+    student_full_name: str
