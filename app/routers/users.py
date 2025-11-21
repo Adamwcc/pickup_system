@@ -27,3 +27,28 @@ def update_current_user_password(
     crud.update_user_password(db, user_id=current_user.id, new_password=password_data.new_password)
     
     return
+
+# --- 新增以下 API ---
+@router.post("/me/claim-student", response_model=schemas.StudentOut, summary="家長認領學生")
+def claim_student_by_parent(
+    claim_data: schemas.ParentClaimStudent,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """
+    由已登入的家長，透過「機構代碼」和「學生姓名」來綁定自己的孩子。
+
+    - **需要家長登入權限**
+    """
+    student = crud.claim_student(
+        db=db,
+        parent_id=current_user.id,
+        institution_code=claim_data.institution_code,
+        student_name=claim_data.student_full_name
+    )
+    if not student:
+        raise HTTPException(
+            status_code=404, 
+            detail="綁定失敗：找不到對應的機構代碼或學生姓名，或該學生已被其他家長綁定"
+        )
+    return student

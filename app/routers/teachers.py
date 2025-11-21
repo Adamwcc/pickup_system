@@ -86,3 +86,24 @@ async def mark_student_as_homework_pending(
 
     return updated_student
 
+    # --- 新增以下 API ---
+@router.post("/students/", response_model=schemas.StudentOut, summary="老師新增學生")
+def create_student_by_teacher(
+    student_data: schemas.StudentCreateByTeacher,
+    db: Session = Depends(get_db),
+    current_teacher: models.User = Depends(get_current_teacher_user)
+):
+    """
+    由已登入的老師或管理員，在其所屬的機構下建立一位新學生。
+
+    - **需要老師或管理員權限**
+    """
+    if not current_teacher.institution_id:
+        raise HTTPException(status_code=400, detail="操作失敗：您的帳號未歸屬任何機構")
+    
+    return crud.create_student_for_institution(
+        db=db, 
+        full_name=student_data.full_name, 
+        institution_id=current_teacher.institution_id
+    )
+

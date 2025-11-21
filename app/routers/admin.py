@@ -114,3 +114,20 @@ def trigger_prediction_job(
             detail=f"執行預測任務時發生錯誤: {str(e)}"
         )
 
+@router.post("/institutions/", response_model=schemas.InstitutionOut, summary="建立新機構")
+def create_institution(
+    institution: schemas.InstitutionCreate,
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_current_admin_user)
+):
+    """
+    由超級管理員建立一個新的教學機構。
+
+    - **需要超級管理員(admin)權限**
+    """
+    # 檢查機構代碼是否已存在
+    db_institution = crud.get_institution_by_code(db, code=institution.code)
+    if db_institution:
+        raise HTTPException(status_code=400, detail="此機構代碼已被使用")
+    
+    return crud.create_institution(db=db, institution=institution)
