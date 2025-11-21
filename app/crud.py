@@ -142,7 +142,7 @@ def update_user_password(db: Session, user_id: int, new_password: str):
     return db_user
 
 def update_student_status(db: Session, student_id: int, new_status: models.StudentStatus):
-    """更新指定學生的狀態。"""
+    """通用的學生狀態更新函式。"""
     db_student = get_student_by_id(db, student_id=student_id)
     if db_student:
         db_student.status = new_status
@@ -195,3 +195,4 @@ def get_dashboard_students(
 
     # 6. 應用排序邏輯並執行查詢
     return query.order_by(order_logic).all()
+

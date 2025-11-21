@@ -1,6 +1,6 @@
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Query, jwt
 from sqlalchemy.orm import Session
-
+from jose import JWTError
 from . import crud, models, security
 from .database import SessionLocal
 
@@ -64,3 +64,20 @@ def get_current_teacher_user(current_user: models.User = Depends(get_current_use
             detail="權限不足，需要老師或管理員身份"
         )
     return current_user
+
+
+    async def get_current_user_from_token(
+    token: str = Query(...), 
+    db: Session = Depends(get_db)
+):
+    """一個專門給 WebSocket 用的依賴項，從查詢參數中獲取 token 並驗證使用者。"""
+    try:
+        payload = jwt.decode(token, security.SECRET_KEY, algorithms=[security.ALGORITHM])
+        phone_number: str = payload.get("sub")
+        if phone_number is None:
+            return None
+    except JWTError:
+        return None
+    
+    user = crud.get_user_by_phone(db, phone_number=phone_number)
+    return user

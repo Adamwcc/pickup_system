@@ -1,48 +1,57 @@
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
-from ..websocket import manager
-import json
+# 檔案路徑: pickup_system/app/routers/websockets.py
+
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, Query, status
+from typing import Dict, List
+
+from .. import models
+from ..dependencies import get_current_user_from_token # 我們下一步會建立它
 
 router = APIRouter()
 
-@router.websocket("/ws/pickup/{notification_id}")
-async def websocket_endpoint(websocket: WebSocket, notification_id: int):
-    """
-    處理接送通知的即時通訊。
-    家長和老師都會連線到同一個以 notification_id 命名的房間。
-    """
-    room_name = f"notification_{notification_id}"
-    await manager.connect(websocket, room_name)
-    
+class ConnectionManager:
+    def __init__(self):
+        self.room_connections: Dict[str, List[WebSocket]] = {}
+        self.user_connections: Dict[int, List[WebSocket]] = {}
+
+    async def connect(self, websocket: WebSocket, room_id: str, user_id: int):
+        await websocket.accept()
+        if room_id not in self.room_connections: self.room_connections[room_id] = []
+        self.room_connections[room_id].append(websocket)
+        if user_id not in self.user_connections: self.user_connections[user_id] = []
+        self.user_connections[user_id].append(websocket)
+
+    def disconnect(self, websocket: WebSocket, room_id: str, user_id: int):
+        if room_id in self.room_connections and websocket in self.room_connections[room_id]:
+            self.room_connections[room_id].remove(websocket)
+        if user_id in self.user_connections and websocket in self.user_connections[user_id]:
+            self.user_connections[user_id].remove(websocket)
+
+    async def broadcast_to_room(self, message: dict, room_id: str):
+        if room_id in self.room_connections:
+            for connection in self.room_connections[room_id]:
+                await connection.send_json(message)
+
+    async def send_personal_message(self, message: dict, user_id: int):
+        if user_id in self.user_connections:
+            for connection in self.user_connections[user_id]:
+                await connection.send_json(message)
+
+manager = ConnectionManager()
+
+@router.websocket("/{notification_id}")
+async def websocket_endpoint(
+    websocket: WebSocket,
+    notification_id: str,
+    current_user: models.User = Depends(get_current_user_from_token)
+):
+    if current_user is None:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+        return
+
+    await manager.connect(websocket, room_id=notification_id, user_id=current_user.id)
     try:
         while True:
-            # 等待從客戶端接收訊息 (例如，家長上傳的 GPS)
-            data = await websocket.receive_text()
-            
-            # --- 模擬 ETA 計算與廣播 ---
-            # 在真實世界中，這裡會解析 GPS 數據，呼叫地圖服務
-            # 現在，我們只做一個簡單的模擬
-            
-            # 假設家長端傳來的是 JSON 格式的 GPS 數據
-            # 例如: {"lat": 25.0330, "lng": 121.5654}
-            # 我們在這裡不做解析，只模擬計算出新的 ETA
-            new_eta_minutes = 10 # 這裡可以改成 random.randint(5, 15) 來讓它更有趣
-            
-            # 準備要廣播給房間內所有人的訊息
-            broadcast_message = {
-                "event": "ETA_UPDATE",
-                "notification_id": notification_id,
-                "eta_minutes": new_eta_minutes
-            }
-            
-            # 將訊息廣播給房間裡的所有人 (包括發送者自己)
-            await manager.broadcast_to_room(json.dumps(broadcast_message), room_name)
-
+            data = await websocket.receive_json()
+            await manager.broadcast_to_room(data, room_id=notification_id)
     except WebSocketDisconnect:
-        # 當客戶端斷開連線時，執行清理工作
-        manager.disconnect(websocket, room_name)
-        # 可以在這裡廣播一條「家長已離線」的訊息
-        disconnect_message = {
-            "event": "USER_DISCONNECTED",
-            "message": "A user has left the channel."
-        }
-        await manager.broadcast_to_room(json.dumps(disconnect_message), room_name)
+        manager.disconnect(websocket, room_id=notification_id, user_id=current_user.id)

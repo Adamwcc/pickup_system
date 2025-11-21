@@ -19,7 +19,7 @@ app.include_router(admin.router, prefix="/api/v1/admin", tags=["Admin Management
 # 在下面新增 teachers.router 這一行
 app.include_router(teachers.router, prefix="/api/v1/teachers", tags=["Teacher Actions"])
 app.include_router(pickups.router, prefix="/api/v1/pickups", tags=["Pickup Process"])
-app.include_router(websockets.router, prefix="/api/v1", tags=["Real-time"])
+app.include_router(websockets.router, prefix="/api/v1/ws", tags=["WebSocket"])
 app.include_router(dashboard.router, prefix="/api/v1/dashboard", tags=["Dashboard"])
 
 @app.get("/")

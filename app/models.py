@@ -15,6 +15,7 @@ class UserRole(str, enum.Enum):
 class StudentStatus(str, enum.Enum):
     in_class = "在班"
     can_be_picked_up = "可接送"
+    homework_pending = "作業較多" # <--- 新增這一行
     parent_is_coming = "家長已出發" # <--- 修改這一行
     departed = "已離校"
 
