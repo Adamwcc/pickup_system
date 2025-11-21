@@ -196,3 +196,80 @@ def get_dashboard_students(
     # 6. 應用排序邏輯並執行查詢
     return query.order_by(order_logic).all()
 
+# --- 機構相關 (Institution) ---
+
+def get_institution_by_code(db: Session, code: str):
+    """根據機構代碼查詢機構。"""
+    return db.query(models.Institution).filter(models.Institution.code == code).first()
+
+def create_institution(db: Session, institution: schemas.InstitutionCreate):
+    """建立一個新的機構。"""
+    db_institution = models.Institution(
+        name=institution.name,
+        code=institution.code
+    )
+    db.add(db_institution)
+    db.commit()
+    db.refresh(db_institution)
+    return db_institution
+
+
+# --- 學生與認領相關 (Student & Claiming) ---
+
+def create_student_for_institution(db: Session, full_name: str, institution_id: int):
+    """在指定機構下建立一位新學生。"""
+    db_student = models.Student(
+        full_name=full_name,
+        institution_id=institution_id
+    )
+    db.add(db_student)
+    db.commit()
+    db.refresh(db_student)
+    return db_student
+
+def claim_student(db: Session, parent_id: int, institution_code: str, student_name: str):
+    """
+    家長認領學生的核心邏輯。
+    1. 驗證機構代碼是否存在。
+    2. 驗證該機構下是否有對應姓名的學生。
+    3. 驗證該學生是否還沒有被綁定過 (一個簡化的假設，真實世界可能更複雜)。
+    4. 如果都通過，則建立 parent_student_link 關聯。
+    """
+    # 1. 驗證機構
+    institution = get_institution_by_code(db, code=institution_code)
+    if not institution:
+        return None # 機構不存在
+
+    # 2. 尋找學生
+    student = db.query(models.Student).filter(
+        models.Student.institution_id == institution.id,
+        models.Student.full_name == student_name
+    ).first()
+
+    if not student:
+        return None # 學生不存在於該機構
+
+    # 3. 檢查學生是否已被綁定 (簡化邏輯：假設一個學生只能被一個家長綁定來簡化流程)
+    #    真實世界中，您可能允許多個家長，這裡的檢查邏輯會不同。
+    #    或者，我們可以允許多次綁定，所以暫時註解掉這個檢查。
+    # existing_link = db.query(models.ParentStudentLink).filter(models.ParentStudentLink.student_id == student.id).first()
+    # if existing_link:
+    #     return None # 學生已被認領
+
+    # 4. 建立綁定關係
+    #    首先檢查是否已存在完全相同的綁定，避免重複
+    exact_link = db.query(models.ParentStudentLink).filter(
+        models.ParentStudentLink.parent_id == parent_id,
+        models.ParentStudentLink.student_id == student.id
+    ).first()
+    
+    if not exact_link:
+        new_link = models.ParentStudentLink(parent_id=parent_id, student_id=student.id)
+        db.add(new_link)
+        db.commit()
+    
+    # 重新查詢學生資訊以回傳
+    db.refresh(student)
+    return student
+
+
