@@ -39,7 +39,6 @@ class UserActivate(BaseModel):
     institution_code: str
     student_full_name: str
 
-# --- 這個是我們這次補上的 ---
 class TeacherCreate(BaseModel):
     phone_number: str
     password: str = Field(min_length=8)
@@ -50,6 +49,7 @@ class TeacherCreate(BaseModel):
 class StudentBase(BaseModel):
     full_name: str
 
+# --- 這個是我們這次補上的 ---
 class StudentCreate(StudentBase):
     pass
 
