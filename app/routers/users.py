@@ -6,11 +6,11 @@ from ..dependencies import get_db, get_current_user
 
 router = APIRouter()
 
-@router.patch("/me/password", status_code=status.HTTP_204_NO_CONTENT, summary="使用者修改自己的密碼")
+@router.patch("/me/password", summary="更新當前使用者的密碼")
 def update_current_user_password(
-    password_data: schemas.UserUpdatePassword,
+    password_data: schemas.UserPasswordUpdate, # <--- 修正於此
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user)
+    current_user: models.User = Depends(get_current_active_user)
 ):
     """
     已登入的使用者修改自己的密碼。
