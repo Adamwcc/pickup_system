@@ -13,14 +13,17 @@ app = FastAPI(
 )
 
 # 包含各個模組的路由
+# --- 2. 只包含核心路由 ---
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["Authentication"])
 app.include_router(users.router, prefix="/api/v1/users", tags=["Users"])
-app.include_router(admin.router, prefix="/api/v1/admin", tags=["Admin Management"])
-# 在下面新增 teachers.router 這一行
-app.include_router(teachers.router, prefix="/api/v1/teachers", tags=["Teacher Actions"])
-app.include_router(pickups.router, prefix="/api/v1/pickups", tags=["Pickup Process"])
-app.include_router(websockets.router, prefix="/api/v1/ws", tags=["WebSocket"])
-app.include_router(dashboard.router, prefix="/api/v1/dashboard", tags=["Dashboard"])
+
+# --- 將所有非核心的路由都註解掉 ---
+# app.include_router(admin.router, prefix="/api/v1/admin", tags=["Admin Management"])
+# app.include_router(teachers.router, prefix="/api/v1/teachers", tags=["Teacher Actions"])
+# app.include_router(pickups.router, prefix="/api/v1/pickups", tags=["Pickup Process"])
+# app.include_router(websockets.router, prefix="/api/v1/ws", tags=["WebSocket"])
+# app.include_router(dashboard.router, prefix="/api/v1/dashboard", tags=["Dashboard"])
+
 
 @app.get("/")
 def read_root():
