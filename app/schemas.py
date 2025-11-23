@@ -41,6 +41,11 @@ class ParentInfo(BaseModel):
     phone_number: str
     full_name: str
 
+# --- 先定義這個輔助模型 ---
+class ParentInvite(BaseModel):
+    phone_number: str
+    full_name: str
+
 # 然後找到 StudentCreateByTeacher 並替換它
 class StudentCreateByTeacher(BaseModel): # <--- 直接繼承 BaseModel，不再繼承 StudentBase
     student_full_name: str
