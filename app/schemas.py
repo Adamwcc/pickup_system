@@ -13,6 +13,10 @@ class InstitutionOut(BaseModel):
     class Config:
         from_attributes = True
 
+class InstitutionCreate(BaseModel):
+    name: str
+    code: str
+
 # --- 使用者相關 ---
 class UserBase(BaseModel):
     """使用者模型的基礎，包含通用欄位。"""
