@@ -39,6 +39,13 @@ class UserActivate(BaseModel):
     institution_code: str
     student_full_name: str
 
+    # --- 新增這個模型 ---
+class TeacherCreate(BaseModel):
+    phone_number: str
+    password: str = Field(min_length=8)
+    full_name: str
+    role: UserRole = Field(default=UserRole.teacher, description="可以是 'teacher' 或 'admin'")
+
 # --- 學生相關 ---
 class StudentBase(BaseModel):
     full_name: str
