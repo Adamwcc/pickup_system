@@ -17,6 +17,13 @@ class Institution(Base):
 
 
 # --- Enums ---
+
+class UserStatus(str, enum.Enum):
+    """使用者帳號狀態"""
+    invited = "invited"      # 已被邀請，但尚未啟用
+    active = "active"        # 已啟用，正常使用
+    inactive = "inactive"    # 已停用/邏輯刪除
+
 class UserRole(str, enum.Enum):
     parent = "parent"
     teacher = "teacher"
@@ -42,19 +49,27 @@ class User(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True, index=True)
     phone_number = Column(String, unique=True, index=True, nullable=False)
-    hashed_password = Column(String, nullable=False)
+    
+    # 我們不再需要一個獨立的密碼欄位，因為 invited 狀態的使用者可以沒有密碼
+    hashed_password = Column(String, nullable=True) # <--- 修改：允許為空 (nullable=True)
+    
     full_name = Column(String)
     role = Column(Enum(UserRole), default=UserRole.parent)
-    is_active = Column(Boolean, default=True)
-    institution_id = Column(Integer, ForeignKey("institutions.id"), nullable=True)
-    institution = relationship("Institution", back_populates="staff")
     
-    # 使用 back_populates 來建立雙向關聯，這更為穩健
+    # --- 替換 is_active ---
+    # is_active = Column(Boolean, default=True) # <--- 刪除或註解掉這一行
+    status = Column(Enum(UserStatus), default=UserStatus.active, nullable=False) # <--- 新增這一行
+    
+    institution_id = Column(Integer, ForeignKey("institutions.id"), nullable=True)
+
+    # --- 關聯 (Relationships) 保持不變 ---
+    institution = relationship("Institution")
     children = relationship(
         "Student", 
         secondary="parent_student_link", 
         back_populates="parents"
     )
+
 
 class Student(Base):
     __tablename__ = "students"
