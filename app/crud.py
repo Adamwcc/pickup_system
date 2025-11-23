@@ -4,18 +4,28 @@ from sqlalchemy.orm import Session, joinedload
 from . import models, schemas, security
 
 
-def get_user_by_phone(db: Session, phone_number: str):
-    return db.query(models.User).filter(
-        models.User.phone_number == phone_number, 
-        models.User.is_active == True  # <--- 新增這個過濾條件
-    ).first()
+# 位於 app/crud.py
 
-def create_user(db: Session, user: schemas.UserCreate):
+def get_user_by_phone(db: Session, phone_number: str):
+    """
+    根據手機號碼獲取使用者。
+    不過濾任何 status，以便在登入和啟用流程中都能找到使用者。
+    """
+    return db.query(models.User).filter(models.User.phone_number == phone_number).first()
+
+
+def create_teacher(db: Session, user: schemas.TeacherCreate):
+    """
+    建立一個具有指定角色的使用者（老師或管理員）。
+    他們被建立時，狀態直接就是 active。
+    """
     hashed_password = security.get_password_hash(user.password)
     db_user = models.User(
         phone_number=user.phone_number,
         hashed_password=hashed_password,
-        full_name=user.full_name
+        full_name=user.full_name,
+        role=user.role,
+        status=models.UserStatus.active  # <--- 明確設定狀態為 active
     )
     db.add(db_user)
     db.commit()
@@ -120,14 +130,14 @@ def deactivate_user(db: Session, user_id: int):
         db.refresh(db_user)
     return db_user
 
-def deactivate_student(db: Session, student_id: int):
-    """邏輯刪除一個學生。"""
-    db_student = get_student_by_id(db, student_id) # 這裡用的是過濾 active 的版本
-    if db_student:
-        db_student.is_active = False
+def deactivate_user(db: Session, user_id: int):
+    """邏輯刪除一個使用者，將其狀態設定為 inactive。"""
+    db_user = get_user_by_id(db, user_id)
+    if db_user:
+        db_user.status = models.UserStatus.inactive # <--- 修改：設定狀態為 inactive
         db.commit()
-        db.refresh(db_student)
-    return db_student
+        db.refresh(db_user)
+    return db_user
 
 # ... (檔案上方原有的函式保持不變) ...
 
@@ -157,7 +167,6 @@ def get_students_by_teacher(db: Session, teacher_id: int):
         models.Student.is_active == True
     ).all()
 
-    # 位於 app/crud.py 的最下方
 
 def get_dashboard_students(
     db: Session, 
@@ -272,4 +281,50 @@ def claim_student(db: Session, parent_id: int, institution_code: str, student_na
     db.refresh(student)
     return student
 
+def pre_register_parent_and_link_student(db: Session, student_id: int, parent_phone: str, parent_full_name: str):
+    """
+    老師新增學生時，為其關聯的家長建立一個「預註冊(invited)」帳號。
+    如果該手機號的家長已存在，則直接使用現有家長進行綁定。
+    """
+    # 1. 檢查該手機號是否已存在使用者
+    parent = get_user_by_phone(db, phone_number=parent_phone)
+    
+    if not parent:
+        # 如果家長不存在，則建立一個 invited 狀態的帳號
+        parent = models.User(
+            phone_number=parent_phone,
+            full_name=parent_full_name,
+            role=models.UserRole.parent,
+            status=models.UserStatus.invited # <--- 核心：狀態為 invited
+            # 注意：這裡沒有設定密碼
+        )
+        db.add(parent)
+        db.flush() # 使用 flush 來獲取 parent 的 id，但不結束事務
+    
+    # 2. 檢查學生與家長的綁定關係是否已存在
+    link = db.query(models.ParentStudentLink).filter(
+        models.ParentStudentLink.parent_id == parent.id,
+        models.ParentStudentLink.student_id == student_id
+    ).first()
+
+    if not link:
+        # 如果綁定關係不存在，則建立它
+        new_link = models.ParentStudentLink(parent_id=parent.id, student_id=student_id)
+        db.add(new_link)
+    
+    db.commit()
+    db.refresh(parent)
+    return parent
+
+
+def activate_parent_account(db: Session, user: models.User, password: str):
+    """
+    啟用一個 'invited' 狀態的家長帳號。
+    設定其密碼，並將狀態更新為 'active'。
+    """
+    user.hashed_password = security.get_password_hash(password)
+    user.status = models.UserStatus.active
+    db.commit()
+    db.refresh(user)
+    return user
 
