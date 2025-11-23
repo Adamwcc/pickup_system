@@ -49,7 +49,7 @@ def create_student_and_invite_parents(
     1. 在機構下建立學生並指派老師。
     2. 遍歷家長列表，預註冊或關聯現有家長。
     3. 將學生與所有這些家長進行綁定。
-    """
+    """  
     # 1. 建立學生實例
     db_student = models.Student(
         full_name=student_name,
