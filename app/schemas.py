@@ -1,108 +1,107 @@
-# 檔案路徑: pickup_system/app/schemas.py
+# 檔案路徑: app/schemas.py
+# 這是重構的核心，統一了所有資料模型的命名。
 
 from pydantic import BaseModel, Field
 from typing import List, Optional
-from datetime import datetime # <--- 新增這一行
-from .models import UserRole, StudentStatus
+from datetime import datetime
+from .models import UserRole, StudentStatus, UserStatus
 
-# --- 機構相關 ---
+# ===================================================================
+# 基礎模型 (Base) - 定義通用欄位
+# ===================================================================
 
+class UserBase(BaseModel):
+    phone_number: str = Field(..., example="0912345678")
+    full_name: Optional[str] = Field(None, example="王大明")
 
-class InstitutionCreate(BaseModel):
-    name: str
-    code: str
+class StudentBase(BaseModel):
+    full_name: str = Field(..., example="王小明")
 
+class InstitutionBase(BaseModel):
+    name: str = Field(..., example="快樂兒童安親班")
+    code: str = Field(..., example="HAPPY-KIDS-123")
 
-class InstitutionOut(BaseModel):
+# ===================================================================
+# 輸入模型 (In) - 用於建立 (Create) 和更新 (Update)
+# ===================================================================
+
+# --- 機構 ---
+class InstitutionCreate(InstitutionBase):
+    pass
+
+# --- 使用者 ---
+class UserCreate(UserBase):
+    """ 用於管理員建立任何角色的使用者 """
+    password: str = Field(..., min_length=8)
+    role: UserRole = Field(default=UserRole.parent)
+
+class ParentInvite(UserBase):
+    """ 用於老師新增學生時，順帶邀請的家長資訊 """
+    pass
+
+class UserPasswordUpdate(BaseModel):
+    """ 用於使用者更新自己的密碼 """
+    old_password: str
+    new_password: str = Field(min_length=8)
+
+class AdminPasswordReset(BaseModel):
+    """ 用於管理員重設使用者的密碼 """
+    new_password: str = Field(min_length=8)
+
+# --- 學生 ---
+class StudentCreate(BaseModel):
+    """ 用於老師建立新學生，並可選擇性地邀請家長 """
+    student_full_name: str
+    parents: List[ParentInvite] = []
+
+class StudentStatusUpdate(BaseModel):
+    """ 用於老師更新學生狀態 """
+    status: StudentStatus
+
+class StudentClaim(BaseModel):
+    """ 用於家長認領學生 """
+    institution_code: str
+    student_name: str
+
+# --- 接送 ---
+class PickupNotificationCreate(BaseModel):
+    student_id: int
+
+# ===================================================================
+# 輸出模型 (Out) - 用於 API 回傳
+# ===================================================================
+
+class InstitutionOut(InstitutionBase):
     id: int
-    name: str
-    code: str
-
     class Config:
         from_attributes = True
-
-# --- 使用者相關 ---
-class UserBase(BaseModel):
-    """使用者模型的基礎，包含通用欄位。"""
-    phone_number: str
-    full_name: Optional[str] = None
-
-class UserCreate(BaseModel):
-    phone_number: str
-    password: str = Field(min_length=8)
-    full_name: str
 
 class UserOut(UserBase):
     id: int
     role: UserRole
+    status: UserStatus
     institution: Optional[InstitutionOut] = None
-    status: str
-
     class Config:
         from_attributes = True
-
-class UserActivate(BaseModel):
-    phone_number: str
-    password: str = Field(min_length=8)
-    institution_code: str
-    student_full_name: str
-
-class TeacherCreate(BaseModel):
-    phone_number: str
-    password: str = Field(min_length=8)
-    full_name: str
-    role: UserRole = Field(default=UserRole.teacher, description="可以是 'teacher' 或 'admin'")
-
-# --- 學生相關 ---
-class StudentBase(BaseModel):
-    full_name: str
-
-# --- 這個是我們這次補上的 ---
-class StudentCreate(BaseModel):
-    full_name: str
-    parent_phone: Optional[str] = None
-    parent_name: Optional[str] = None
-
-    class Config:
-        orm_mode = True
 
 class StudentOut(StudentBase):
     id: int
     status: StudentStatus
+    is_active: bool
     teacher: Optional[UserOut] = None
     parents: List[UserOut] = []
     institution: Optional[InstitutionOut] = None
-
     class Config:
         from_attributes = True
-
-class ParentInvite(BaseModel):
-    phone_number: str
-    full_name: str
-
-class StudentCreateByTeacher(BaseModel):
-    student_full_name: str
-    parents: List[ParentInvite]
-
-# --- 認證與 Token ---
-class Token(BaseModel):
-    access_token: str
-    token_type: str
-
-class TokenData(BaseModel):
-    phone_number: Optional[str] = None
-
-# --- 接送流程 ---
-class PickupNotificationCreate(BaseModel):
-    student_id: int
 
 class PickupNotificationOut(BaseModel):
     id: int
     student_id: int
     parent_id: int
     status: str
+    created_at: datetime
     student: StudentOut
-
+    parent: UserOut
     class Config:
         from_attributes = True
 
@@ -111,25 +110,23 @@ class PickupPredictionOut(BaseModel):
     prediction_date: datetime
     student_id: int
     reason: Optional[str] = None
-    
-    # 我們也希望回傳完整的學生資訊，而不是只有 student_id
-    student: StudentOut 
-
+    student: StudentOut
     class Config:
         from_attributes = True
 
-# --- 密碼管理 ---
-class UserPasswordUpdate(BaseModel):
-    old_password: str
-    new_password: str = Field(min_length=8)
+# ===================================================================
+# 認證模型 (Auth)
+# ===================================================================
 
-class AdminResetPassword(BaseModel):
-    new_password: str = Field(min_length=8)
+class Token(BaseModel):
+    access_token: str
+    token_type: str
 
-# --- 儀表板 ---
-class DashboardStudentOut(StudentOut):
-    pass
+class TokenData(BaseModel):
+    phone_number: Optional[str] = None
 
-class StudentClaim(BaseModel):
-    institution_code: str
-    student_name: str
+class UserActivation(BaseModel):
+    """ 用於 'invited' 狀態的家長啟用自己的帳號 """
+    phone_number: str
+    password: str = Field(min_length=8)
+
