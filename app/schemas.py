@@ -50,6 +50,9 @@ class TeacherCreate(BaseModel):
 class StudentBase(BaseModel):
     full_name: str
 
+class StudentCreate(StudentBase):
+    pass
+
 class StudentOut(StudentBase):
     id: int
     status: StudentStatus
