@@ -105,6 +105,18 @@ class PickupNotificationOut(BaseModel):
     class Config:
         from_attributes = True
 
+class PickupPredictionOut(BaseModel):
+    id: int
+    prediction_date: datetime
+    student_id: int
+    reason: Optional[str] = None
+    
+    # 我們也希望回傳完整的學生資訊，而不是只有 student_id
+    student: StudentOut 
+
+    class Config:
+        from_attributes = True
+
 # --- 密碼管理 ---
 class UserPasswordUpdate(BaseModel):
     old_password: str
