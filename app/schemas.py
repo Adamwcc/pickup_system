@@ -57,8 +57,13 @@ class StudentBase(BaseModel):
     full_name: str
 
 # --- 這個是我們這次補上的 ---
-class StudentCreate(StudentBase):
-    pass
+class StudentCreate(BaseModel):
+    full_name: str
+    parent_phone: Optional[str] = None
+    parent_name: Optional[str] = None
+
+    class Config:
+        orm_mode = True
 
 class StudentOut(StudentBase):
     id: int
@@ -111,3 +116,7 @@ class AdminResetPassword(BaseModel):
 # --- 儀表板 ---
 class DashboardStudentOut(StudentOut):
     pass
+
+class StudentClaim(BaseModel):
+    institution_code: str
+    student_name: str

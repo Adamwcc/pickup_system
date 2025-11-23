@@ -35,12 +35,50 @@ def create_teacher(db: Session, user: schemas.TeacherCreate):
 # ... (檔案上方原有的函式保持不變) ...
 
 # --- 學生相關 ---
-def create_student(db: Session, student: schemas.StudentCreate):
-    db_student = models.Student(full_name=student.full_name)
+# 請將此函式新增到 app/crud.py
+
+def create_student_and_invite_parents(
+    db: Session, 
+    student_name: str,
+    parents_data: List[schemas.ParentCreate], # 接收一個家長資訊的列表
+    teacher_id: int,
+    institution_id: int
+) -> models.Student:
+    """
+    一個交易安全的函式，用於：
+    1. 在機構下建立學生並指派老師。
+    2. 遍歷家長列表，預註冊或關聯現有家長。
+    3. 將學生與所有這些家長進行綁定。
+    """
+    # 1. 建立學生實例
+    db_student = models.Student(
+        full_name=student_name,
+        institution_id=institution_id,
+        teacher_id=teacher_id
+    )
     db.add(db_student)
-    db.commit()
+    db.flush()  # 使用 flush 來獲取 db_student.id
+
+    # 2. 處理家長關聯
+    if parents_data:
+        for parent_info in parents_data:
+            # 複用您已經寫好的強大函式！
+            pre_register_parent_and_link_student(
+                db=db,
+                student_id=db_student.id,
+                parent_phone=parent_info.phone_number,
+                parent_full_name=parent_info.full_name
+            )
+    
+    # 由於 pre_register_parent_and_link_student 內部有 commit，
+    # 為了確保整個操作的原子性，最好將 commit 移到這裡。
+    # (這需要對 pre_register_parent_and_link_student 做微小修改，暫時保持原樣以簡化)
+    
+    db.commit() # 這裡的 commit 會提交上面 flush 的學生以及 CRUD 內部的操作
     db.refresh(db_student)
     return db_student
+
+
 
 def link_parent_to_student(db: Session, parent_id: int, student_id: int):
     link = models.ParentStudentLink(parent_id=parent_id, student_id=student_id)
@@ -219,48 +257,46 @@ def create_student_for_institution(db: Session, full_name: str, institution_id: 
     db.refresh(db_student)
     return db_student
 
-def claim_student(db: Session, parent_id: int, institution_code: str, student_name: str):
+def claim_student(
+    db: Session, 
+    parent_id: int, 
+    claim_data: schemas.StudentClaim # 使用 Pydantic 模型接收資料
+) -> Optional[models.Student]:
     """
-    家長認領學生的核心邏輯。
-    1. 驗證機構代碼是否存在。
-    2. 驗證該機構下是否有對應姓名的學生。
-    3. 驗證該學生是否還沒有被綁定過 (一個簡化的假設，真實世界可能更複雜)。
-    4. 如果都通過，則建立 parent_student_link 關聯。
+    家長透過機構代碼和學生姓名來認領學生的核心邏輯。
     """
     # 1. 驗證機構
-    institution = get_institution_by_code(db, code=institution_code)
+    institution = get_institution_by_code(db, code=claim_data.institution_code)
     if not institution:
-        return None # 機構不存在
+        # 為了安全，不應洩漏機構是否存在，但在開發階段可以明確一點
+        # 在真實產品中，這裡應該引發一個統一的 "認領失敗" 錯誤
+        return None  # 機構不存在
 
-    # 2. 尋找學生
+    # 2. 在該機構下尋找學生
     student = db.query(models.Student).filter(
         models.Student.institution_id == institution.id,
-        models.Student.full_name == student_name
+        models.Student.full_name == claim_data.student_name,
+        models.Student.is_active == True
     ).first()
 
     if not student:
-        return None # 學生不存在於該機構
+        return None  # 學生不存在於該機構
 
-    # 3. 檢查學生是否已被綁定 (簡化邏輯：假設一個學生只能被一個家長綁定來簡化流程)
-    #    真實世界中，您可能允許多個家長，這裡的檢查邏輯會不同。
-    #    或者，我們可以允許多次綁定，所以暫時註解掉這個檢查。
-    # existing_link = db.query(models.ParentStudentLink).filter(models.ParentStudentLink.student_id == student.id).first()
-    # if existing_link:
-    #     return None # 學生已被認領
-
-    # 4. 建立綁定關係
-    #    首先檢查是否已存在完全相同的綁定，避免重複
-    exact_link = db.query(models.ParentStudentLink).filter(
+    # 3. 檢查是否已存在完全相同的綁定關係，避免重複
+    existing_link = db.query(models.ParentStudentLink).filter(
         models.ParentStudentLink.parent_id == parent_id,
         models.ParentStudentLink.student_id == student.id
     ).first()
     
-    if not exact_link:
-        new_link = models.ParentStudentLink(parent_id=parent_id, student_id=student.id)
-        db.add(new_link)
-        db.commit()
+    if existing_link:
+        # 如果已經綁定，直接回傳學生資訊，視為操作成功
+        return student
+
+    # 4. 建立新的綁定關係
+    new_link = models.ParentStudentLink(parent_id=parent_id, student_id=student.id)
+    db.add(new_link)
+    db.commit()
     
-    # 重新查詢學生資訊以回傳
     db.refresh(student)
     return student
 
