@@ -38,12 +38,12 @@ def create_teacher(db: Session, user: schemas.TeacherCreate):
 # 請將此函式新增到 app/crud.py
 
 def create_student_and_invite_parents(
-    db: Session, 
-    student_name: str,
-    parents_data: List[schemas.ParentCreate], # 接收一個家長資訊的列表
-    teacher_id: int,
-    institution_id: int
-) -> models.Student:
+        db: Session, 
+        student_name: str,
+        parents_data: List[schemas.ParentInvite], # <--- 修正於此
+        teacher_id: int,
+        institution_id: int
+    ) -> models.Student:
     """
     一個交易安全的函式，用於：
     1. 在機構下建立學生並指派老師。
