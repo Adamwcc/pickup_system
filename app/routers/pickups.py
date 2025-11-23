@@ -51,7 +51,7 @@ def start_pickup_process(
 
 @router.post(
     "/{notification_id}/complete", 
-    response_model=schemas.PickupNotificationCompleteOut, 
+    response_model=schemas.PickupNotificationOut, # <--- 修正點 1: 使用正確的回傳模型
     summary="教職員確認完成交接"
 )
 def complete_pickup(
@@ -79,11 +79,9 @@ def complete_pickup(
     # 執行完成操作
     completed_notification = crud.complete_pickup_notification(db=db, notification_id=notification_id)
     
-    return {
-        "message": "交接成功完成！",
-        "notification_id": completed_notification.id,
-        "student_final_status": completed_notification.student.status
-    }
+    # 修正點 2: 直接回傳 SQLAlchemy 物件，Pydantic 會自動轉換
+    return completed_notification
+
 
 # ... (檔案上方原有的函式保持不變) ...
 
