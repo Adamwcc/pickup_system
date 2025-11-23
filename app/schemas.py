@@ -2,6 +2,7 @@
 
 from pydantic import BaseModel, Field
 from typing import List, Optional
+from datetime import datetime # <--- 新增這一行
 from .models import UserRole, StudentStatus
 
 # --- 機構相關 ---
