@@ -42,11 +42,9 @@ class ParentInfo(BaseModel):
     full_name: str
 
 # 然後找到 StudentCreateByTeacher 並替換它
-class StudentCreateByTeacher(BaseModel):
-    """老師新增學生時使用的新模型，包含家長資訊。"""
+class StudentCreateByTeacher(BaseModel): # <--- 直接繼承 BaseModel，不再繼承 StudentBase
     student_full_name: str
-    # 我們用一個列表來接收家長資訊，為未來支持多個家長做準備
-    parents: List[ParentInfo] 
+    parents: List[ParentInvite]
 
 class UserActivate(BaseModel):
     """家長啟用帳號時使用的模型。"""
