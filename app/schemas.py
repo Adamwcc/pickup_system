@@ -5,6 +5,13 @@ from typing import List, Optional
 from .models import UserRole, StudentStatus
 
 # --- 機構相關 ---
+
+
+class InstitutionCreate(BaseModel):
+    name: str
+    code: str
+
+
 class InstitutionOut(BaseModel):
     id: int
     name: str
@@ -12,10 +19,6 @@ class InstitutionOut(BaseModel):
 
     class Config:
         from_attributes = True
-
-class InstitutionCreate(BaseModel):
-    name: str
-    code: str
 
 # --- 使用者相關 ---
 class UserBase(BaseModel):
@@ -102,7 +105,7 @@ class UserPasswordUpdate(BaseModel):
     old_password: str
     new_password: str = Field(min_length=8)
 
-class AdminPasswordReset(BaseModel):
+class AdminResetPassword(BaseModel):
     new_password: str = Field(min_length=8)
 
 # --- 儀表板 ---
