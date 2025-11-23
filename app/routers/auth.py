@@ -96,8 +96,16 @@ def login_for_access_token(
             detail=f"帳號狀態異常 ({user.status.value})，無法登入",
         )
 
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = security.create_access_token(
-        data={"sub": user.phone_number}, expires_delta=access_token_expires
-    )
+     # 1. 計算過期時間
+    expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    
+    # 2. 準備要編碼的資料，將過期時間 'exp' 也放進去
+    to_encode = {
+        "sub": user.phone_number,
+        "exp": expire
+    }
+    
+    # 3. 呼叫 create_access_token，只傳遞 data 參數
+    access_token = security.create_access_token(data=to_encode)
+    
     return {"access_token": access_token, "token_type": "bearer"}
