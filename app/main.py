@@ -24,7 +24,8 @@ app.include_router(dashboard.router, prefix="/api/v1/dashboard", tags=["Dashboar
 
 @app.get("/")
 def read_root():
-    return {"message": "補習班接送系統 API 已成功運行！版本 1.0.0"}
+    # 我們加入一個獨一無二的版本號來進行追蹤
+    return {"message": "SYNC-TEST-V2-SUCCESS"} 
 
 @app.get("/health")
 def health_check():
