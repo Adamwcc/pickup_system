@@ -28,7 +28,7 @@ app.include_router(users.router, prefix="/api/v1/users", tags=["Users"])
 @app.get("/")
 def read_root():
     # 我們加入一個獨一無二的版本號來進行追蹤
-    return {"message": "SYNC-TEST-V2-SUCCESS"} 
+    return {"message": "SYNC-TEST-V3-SUCCESS"} 
 
 @app.get("/health")
 def health_check():
