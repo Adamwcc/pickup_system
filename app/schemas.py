@@ -25,10 +25,6 @@ class UserBase(BaseModel):
 
     
 # --- User ---
-class UserCreate(BaseModel):
-    phone_number: str
-    password: str = Field(min_length=8)
-    full_name: str
 
 # 現在，下面的 UserOut 才能正確找到它繼承的對象
 class UserOut(UserBase):
@@ -39,6 +35,25 @@ class UserOut(UserBase):
     class Config:
         from_attributes = True
 
+
+# 先定義一個用於描述家長資訊的輔助模型
+class ParentInfo(BaseModel):
+    phone_number: str
+    full_name: str
+
+# 然後找到 StudentCreateByTeacher 並替換它
+class StudentCreateByTeacher(BaseModel):
+    """老師新增學生時使用的新模型，包含家長資訊。"""
+    student_full_name: str
+    # 我們用一個列表來接收家長資訊，為未來支持多個家長做準備
+    parents: List[ParentInfo] 
+
+class UserActivate(BaseModel):
+    """家長啟用帳號時使用的模型。"""
+    phone_number: str
+    password: str = Field(min_length=8)
+    institution_code: str
+    student_full_name: str
 
 
 # --- Token ---
@@ -122,8 +137,3 @@ class StudentCreateByTeacher(BaseModel):
     """老師新增學生時使用的模型"""
     full_name: str
 
-# --- 家長綁定相關 ---
-class ParentClaimStudent(BaseModel):
-    """家長認領學生時使用的模型"""
-    institution_code: str
-    student_full_name: str
