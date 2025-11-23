@@ -28,7 +28,7 @@ class UserOut(UserBase):
     id: int
     role: UserRole
     institution: Optional[InstitutionOut] = None
-    status: str # 使用 str 而不是 UserStatus Enum，以防未來擴充
+    status: str
 
     class Config:
         from_attributes = True
@@ -39,7 +39,7 @@ class UserActivate(BaseModel):
     institution_code: str
     student_full_name: str
 
-    # --- 新增這個模型 ---
+# --- 這個是我們這次補上的 ---
 class TeacherCreate(BaseModel):
     phone_number: str
     password: str = Field(min_length=8)
@@ -100,5 +100,4 @@ class AdminPasswordReset(BaseModel):
 
 # --- 儀表板 ---
 class DashboardStudentOut(StudentOut):
-    # 可以在這裡為儀表板新增額外的、計算出的欄位
     pass
