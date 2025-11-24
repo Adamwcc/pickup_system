@@ -88,7 +88,7 @@ class ParentActivation(BaseModel):
     phone_number: str = Field(..., description="家長的手機號碼")
     password: str = Field(..., min_length=8, description="家長自訂的密碼")
     institution_code: str = Field(..., description="機構的唯一代碼")
-    student_full_name: str = Field(..., description="家長其中一位孩子的姓名，用於驗證身份"
+    student_full_name: str = Field(..., description="家長其中一位孩子的姓名，用於驗證身份")
 
 
 # ===================================================================
