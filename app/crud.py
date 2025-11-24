@@ -2,7 +2,7 @@
 # 版本：基於新憲法的 v2.0
 # 說明：提供了機構、教職員、班級的核心 CRUD 操作。
 from typing import List, Optional 
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, 
 from typing import List
 
 from . import models, schemas, security
@@ -13,14 +13,10 @@ from . import models, schemas, security
 
 def get_user_by_phone(db: Session, phone_number: str) -> Optional[models.User]:
     """
-    根據手機號碼獲取使用者，並預先載入所有相關的學生和機構資訊。
-    這是為了在後續的驗證流程中，避免額外的資料庫查詢 (N+1 問題)。
+    根據手機號碼獲取使用者。
+    關聯的 children (學生) 會在需要時由 SQLAlchemy 自動懶加載。
     """
-    return db.query(models.User).options(
-        # 當載入 user.children 時，
-        # 對於每一個 child (student)，都立刻 join 並載入其 institution 屬性。
-        joinedload(models.User.children).joinedload(models.Student.institution)
-    ).filter(models.User.phone_number == phone_number).first()
+    return db.query(models.User).filter(models.User.phone_number == phone_number).first()
 
 def update_user_password(db: Session, user: models.User, new_password: str) -> models.User:
     """ 更新指定使用者的密碼。"""
