@@ -1,7 +1,7 @@
 # 檔案路徑: app/crud.py
 # 版本：基於新憲法的 v2.0
 # 說明：提供了機構、教職員、班級的核心 CRUD 操作。
-
+from typing import List, Optional 
 from sqlalchemy.orm import Session
 from typing import List
 
