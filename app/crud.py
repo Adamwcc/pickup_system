@@ -122,56 +122,52 @@ def link_parent_to_student(db: Session, parent_id: int, student_id: int) -> mode
 # Student & Teacher (學生與老師)
 # ===================================================================
 
-def pre_register_parent_and_link_student(db: Session, student_id: int, parent_phone: str, parent_full_name: str) -> models.User:
+def pre_register_parent_and_link_student(db: Session, student_id: int, parent_phone: str, parent_full_name: Optional[str] = None) -> models.User:
     """
     老師新增學生時，為其關聯的家長建立一個「預註冊(invited)」帳號。
     如果該手機號的家長已存在，則直接使用現有家長進行綁定。
     """
-    # 1. 檢查該手機號是否已存在使用者
     parent = get_user_by_phone(db, phone_number=parent_phone)
     
     if not parent:
-        # 如果家長不存在，則建立一個 invited 狀態的帳號
         parent = models.User(
             phone_number=parent_phone,
-            full_name=parent_full_name,
+            # 如果 full_name 是 None，就用手機號作為預設名
+            full_name=parent_full_name if parent_full_name is not None else parent_phone,
             role=models.UserRole.parent,
-            status=models.UserStatus.invited # 核心：狀態為 invited
+            status=models.UserStatus.invited
         )
         db.add(parent)
-        # 注意：這裡我們先不 commit，也不 flush，讓上層函式來統一處理事務
     
-    # 2. 建立學生與家長的綁定關係
-    # 我們需要先 flush 來獲取 parent 的 id
     db.flush()
     link_parent_to_student(db, parent_id=parent.id, student_id=student_id)
     
     return parent
 
+# vvv--- 同時也替換這個函式 ---vvv
 def create_student(db: Session, student_data: schemas.StudentCreate, operator_id: int) -> models.Student:
     """
     一個交易安全的函式，用於：
     1. 在機構和班級下建立學生。
     2. 遍歷家長列表，預註冊或關聯現有家長。
     """
-    # 1. 建立學生實例
     db_student = models.Student(
         full_name=student_data.full_name,
         class_id=student_data.class_id,
         is_active=True,
-        status=models.StudentStatus.departed # 初始狀態為已離校
+        status=models.StudentStatus.departed
     )
     db.add(db_student)
-    db.flush()  # 使用 flush 來獲取 db_student.id
+    db.flush()
 
-    # 2. 處理家長關聯
     if student_data.parents:
         for parent_info in student_data.parents:
             pre_register_parent_and_link_student(
                 db=db,
                 student_id=db_student.id,
                 parent_phone=parent_info.phone_number,
-                parent_full_name=parent_info.full_name
+                # 直接傳遞可能為 None 的 full_name
+                parent_full_name=parent_info.full_name 
             )
     
     db.commit()
