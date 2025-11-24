@@ -1,99 +1,113 @@
+# 檔案路徑: app/models.py
+# 這是基於新憲法的第一步，建立了支援精細化權限和班級的資料庫模型。
+
 from sqlalchemy import Column, Integer, String, Enum, DateTime, ForeignKey, Boolean
 from sqlalchemy.orm import relationship
 from .database import Base
 import enum
 from datetime import datetime
 
-# 位於 app/models.py 的頂部
+# ===================================================================
+# Enums (列舉) - 定義系統中所有可選的狀態和角色
+# ===================================================================
+
+class UserRole(str, enum.Enum):
+    """ 使用者角色 """
+    parent = "parent"
+    teacher = "teacher"          # 帶班老師
+    receptionist = "receptionist"  # 行政老師
+    admin = "admin"              # 機構管理員
+    super_admin = "super_admin"  # (未來預留) 平台超級管理員
+
+class UserStatus(str, enum.Enum):
+    """ 使用者帳號狀態 """
+    invited = "invited"      # 已被邀請，但尚未啟用
+    active = "active"        # 已啟用，正常使用
+    inactive = "inactive"    # 已停用/邏輯刪除
+
+class StudentStatus(str, enum.Enum):
+    """ 學生狀態 (每日會被重置) """
+    departed = "已離校"         # 預設狀態
+    in_class = "在班"           # 到班點名後
+    can_be_picked_up = "可接送" # 完成作業後
+    homework_pending = "作業較多" # 作業未完成
+    parent_is_coming = "家長已出發" # 家長發起接送後
+
+# ===================================================================
+# 主要模型 (Primary Models)
+# ===================================================================
 
 class Institution(Base):
+    """ 機構模型 """
     __tablename__ = "institutions"
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True, nullable=False)
     code = Column(String, unique=True, index=True, nullable=False)
 
-    students = relationship("Student", back_populates="institution")
+    # 反向關聯
     staff = relationship("User", back_populates="institution")
+    classes = relationship("Class", back_populates="institution")
 
+class User(Base):
+    """ 使用者模型 (包含家長、老師、管理員) """
+    __tablename__ = "users"
+    id = Column(Integer, primary_key=True, index=True)
+    phone_number = Column(String, unique=True, index=True, nullable=False)
+    hashed_password = Column(String, nullable=True) # invited 狀態的家長可以沒有密碼
+    full_name = Column(String, nullable=False)
+    role = Column(Enum(UserRole), nullable=False)
+    status = Column(Enum(UserStatus), default=UserStatus.active, nullable=False)
+    
+    institution_id = Column(Integer, ForeignKey("institutions.id"), nullable=True) # 家長在啟用前可能沒有機構
+    
+    # 關聯
+    institution = relationship("Institution", back_populates="staff")
+    # 作為家長，關聯的孩子
+    children = relationship("Student", secondary="parent_student_link", back_populates="parents")
+    # 作為帶班老師，關聯的班級
+    teaching_class = relationship("Class", back_populates="teacher", uselist=False) # 一個老師只帶一個班
 
-# --- Enums ---
+class Class(Base):
+    """ 班級模型 """
+    __tablename__ = "classes"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, index=True, nullable=False)
+    
+    institution_id = Column(Integer, ForeignKey("institutions.id"), nullable=False)
+    teacher_id = Column(Integer, ForeignKey("users.id"), nullable=True) # 班級可以暫時沒有老師
+    
+    # 關聯
+    institution = relationship("Institution", back_populates="classes")
+    teacher = relationship("User", back_populates="teaching_class")
+    students = relationship("Student", back_populates="class_") # class 是關鍵字，用 class_
 
-class UserStatus(str, enum.Enum):
-    """使用者帳號狀態"""
-    invited = "invited"      # 已被邀請，但尚未啟用
-    active = "active"        # 已啟用，正常使用
-    inactive = "inactive"    # 已停用/邏輯刪除
+class Student(Base):
+    """ 學生模型 """
+    __tablename__ = "students"
+    id = Column(Integer, primary_key=True, index=True)
+    full_name = Column(String, index=True, nullable=False)
+    status = Column(Enum(StudentStatus), default=StudentStatus.departed, nullable=False)
+    is_active = Column(Boolean, default=True, nullable=False) # 用於標記是否畢業/退學
+    
+    class_id = Column(Integer, ForeignKey("classes.id"), nullable=False) # 學生必須屬於一個班級
+    
+    # 關聯
+    class_ = relationship("Class", back_populates="students")
+    parents = relationship("User", secondary="parent_student_link", back_populates="children")
+    notifications = relationship("PickupNotification", back_populates="student")
 
-class UserRole(str, enum.Enum):
-    parent = "parent"
-    teacher = "teacher"
-    receptionist = "receptionist" # <--- 新增這一行
-    admin = "admin"
+# ===================================================================
+# 中間表與附屬模型
+# ===================================================================
 
-
-class StudentStatus(str, enum.Enum):
-    in_class = "在班"
-    can_be_picked_up = "可接送"
-    homework_pending = "作業較多" # <--- 新增這一行
-    parent_is_coming = "家長已出發" # <--- 修改這一行
-    departed = "已離校"
-
-# --- 中間表 (Association Table) ---
 class ParentStudentLink(Base):
+    """ 家長-學生 多對多關聯表 """
     __tablename__ = "parent_student_link"
     parent_id = Column(Integer, ForeignKey("users.id"), primary_key=True)
     student_id = Column(Integer, ForeignKey("students.id"), primary_key=True)
 
-# --- 主要模型 (Primary Models) ---
-class User(Base):
-    __tablename__ = "users"
-    id = Column(Integer, primary_key=True, index=True)
-    phone_number = Column(String, unique=True, index=True, nullable=False)
-    
-    # 我們不再需要一個獨立的密碼欄位，因為 invited 狀態的使用者可以沒有密碼
-    hashed_password = Column(String, nullable=True) # <--- 修改：允許為空 (nullable=True)
-    
-    full_name = Column(String)
-    role = Column(Enum(UserRole), default=UserRole.parent)
-    
-    # --- 替換 is_active ---
-    # is_active = Column(Boolean, default=True) # <--- 刪除或註解掉這一行
-    status = Column(Enum(UserStatus), default=UserStatus.active, nullable=False) # <--- 新增這一行
-    
-    institution_id = Column(Integer, ForeignKey("institutions.id"), nullable=True)
-
-    # --- 關聯 (Relationships) 保持不變 ---
-    institution = relationship("Institution")
-    children = relationship(
-        "Student", 
-        secondary="parent_student_link", 
-        back_populates="parents"
-    )
-
-
-class Student(Base):
-    __tablename__ = "students"
-    id = Column(Integer, primary_key=True, index=True)
-    full_name = Column(String, index=True, nullable=False)
-    status = Column(Enum(StudentStatus), default=StudentStatus.in_class)
-    is_active = Column(Boolean, default=True)
-    teacher_id = Column(Integer, ForeignKey("users.id"), nullable=True)
-     # --- 新增以下兩行 ---
-    institution_id = Column(Integer, ForeignKey("institutions.id"), nullable=False)
-    institution = relationship("Institution", back_populates="students")
-    # --- 結束新增 ---
-
-    parents = relationship(
-        "User", 
-        secondary="parent_student_link", 
-        back_populates="children"
-    )
-    
-    notifications = relationship("PickupNotification", back_populates="student")
-    teacher = relationship("User") # <--- 新增這一行
-
-
 class PickupNotification(Base):
+    """ 接送通知記錄 """
     __tablename__ = "pickup_notifications"
     id = Column(Integer, primary_key=True, index=True)
     student_id = Column(Integer, ForeignKey("students.id"), nullable=False)
@@ -104,18 +118,11 @@ class PickupNotification(Base):
     student = relationship("Student", back_populates="notifications")
     parent = relationship("User")
 
-    # ... (檔案上方原有的模型保持不變) ...
-
+# (PickupPrediction 模型暫時保持不變，我們可以在後續階段再優化它)
 class PickupPrediction(Base):
-    """用於儲存每日接送預測結果的資料表。"""
     __tablename__ = "pickup_predictions"
-
     id = Column(Integer, primary_key=True, index=True)
-    prediction_date = Column(DateTime, index=True, nullable=False) # 預測的日期
+    prediction_date = Column(DateTime, index=True, nullable=False)
     student_id = Column(Integer, ForeignKey("students.id"), nullable=False)
-    
-    # 預測的理由或信心分數，未來可擴充
-    reason = Column(String, default="高頻率常客") 
-    
+    reason = Column(String, default="高頻率常客")
     student = relationship("Student")
-
