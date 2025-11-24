@@ -1,133 +1,98 @@
-from fastapi import APIRouter, Depends, HTTPException, status # <--- 確保 status 在這裡
-from sqlalchemy.orm import Session
+# 檔案路徑: app/routers/admin.py
+# 版本：基於新憲法的 v2.0
+# 說明：實現了機構管理員的核心 API。
 
-from .. import crud, schemas, models
-from ..dependencies import get_db, get_current_admin_user
-from ..jobs import prediction_job # <--- 在檔案頂部附近新增這一行
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+from typing import List
+
+from .. import crud, models, schemas, security
+from ..dependencies import get_db
 
 router = APIRouter()
 
-@router.post("/teachers", response_model=schemas.UserOut, summary="新增教職員帳號")
-def create_new_teacher(
-    teacher_data: schemas.TeacherCreate,
-    db: Session = Depends(get_db),
-    admin_user: models.User = Depends(get_current_admin_user)
-):
+# --- 權限依賴項 ---
+def get_current_admin_user(current_user: models.User = Depends(security.get_current_active_user)):
     """
-    由管理員 (admin) 建立一個新的教職員 (teacher) 或另一個管理員帳號。
-
-    - **需要管理員權限**
+    一個依賴項，用於驗證當前使用者是否為 'admin'。
     """
-    db_user = crud.get_user_by_phone(db, phone_number=teacher_data.phone_number)
-    if db_user:
-        raise HTTPException(status_code=400, detail="此手機號碼已被註冊")
-    
-    return crud.create_teacher(db=db, user=teacher_data)
-
-@router.delete("/users/{user_id}", response_model=schemas.UserOut, summary="停用使用者帳號 (邏輯刪除)")
-def delete_user(
-    user_id: int,
-    db: Session = Depends(get_db),
-    admin_user: models.User = Depends(get_current_admin_user)
-):
-    """
-    由管理員停用一個使用者帳號（老師或家長）。
-    這是一個邏輯刪除，資料會被保留。
-    """
-    user_to_delete = crud.get_user_by_id(db, user_id)
-    if not user_to_delete:
-        raise HTTPException(status_code=404, detail="找不到該使用者")
-    
-    if user_to_delete.id == admin_user.id:
-        raise HTTPException(status_code=400, detail="管理員無法停用自己的帳號")
-
-    return crud.deactivate_user(db=db, user_id=user_id)
-
-@router.delete("/students/{student_id}", response_model=schemas.StudentOut, summary="刪除學生資料 (邏輯刪除)")
-def delete_student(
-    student_id: int,
-    db: Session = Depends(get_db),
-    admin_user: models.User = Depends(get_current_admin_user)
-):
-    """
-    由管理員刪除一個學生。
-    這是一個邏輯刪除，資料會被保留。
-    """
-    student_to_delete = crud.get_student_by_id(db, student_id)
-    if not student_to_delete:
-        raise HTTPException(status_code=404, detail="找不到該學生")
-
-    return crud.deactivate_student(db=db, student_id=student_id)
-
-@router.patch(
-    "/users/{user_id}/password", 
-    status_code=status.HTTP_204_NO_CONTENT, 
-    summary="管理員重設使用者密碼"
-)
-def admin_reset_user_password(
-    user_id: int,
-    password_data: schemas.AdminResetPassword,
-    db: Session = Depends(get_db),
-    admin_user: models.User = Depends(get_current_admin_user)
-):
-    """
-    由管理員強制重設指定使用者的密碼，無需知道舊密碼。
-    """
-    user_to_update = crud.get_user_by_id(db, user_id)
-    if not user_to_update:
-        raise HTTPException(status_code=404, detail="找不到該使用者")
-
-    if user_to_update.id == admin_user.id:
+    if current_user.role != models.UserRole.admin:
         raise HTTPException(
-            status_code=400, 
-            detail="請使用'修改自己的密碼'功能來更改您的密碼"
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="權限不足：此操作需要機構管理員權限。"
         )
+    if not current_user.institution_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="操作失敗：您的管理員帳號未歸屬任何機構。"
+        )
+    return current_user
 
-    crud.update_user_password(db, user_id=user_id, new_password=password_data.new_password)
-    
-    return
-
-
-    # ... (檔案上方原有的函式保持不變) ...
-
-# --- 匯入我們需要的新模組 ---
+# --- API 端點 ---
 
 @router.post(
-    "/jobs/trigger-prediction", 
-    summary="手動觸發智慧預測分析任務",
-    include_in_schema=True # 設定為 True 讓它顯示在文件中，方便我們測試
+    "/staff/", 
+    response_model=schemas.UserOut, 
+    status_code=status.HTTP_201_CREATED,
+    summary="管理員新增教職員"
 )
-def trigger_prediction_job(
-    admin_user: models.User = Depends(get_current_admin_user)
-):
-    """
-    由管理員手動觸發一次歷史數據分析與預測任務。
-    這是一個臨時的解決方案，用於在無法使用 Cron Job 的環境中進行測試。
-    """
-    try:
-        prediction_job.analyze_and_predict()
-        return {"message": "智慧預測任務已成功觸發並執行完畢。"}
-    except Exception as e:
-        # 捕獲任何潛在的錯誤，並以清晰的方式回傳
-        raise HTTPException(
-            status_code=500,
-            detail=f"執行預測任務時發生錯誤: {str(e)}"
-        )
-
-@router.post("/institutions/", response_model=schemas.InstitutionOut, summary="建立新機構")
-def create_institution(
-    institution: schemas.InstitutionCreate,
+def create_staff(
+    staff_data: schemas.StaffCreate,
     db: Session = Depends(get_db),
     current_admin: models.User = Depends(get_current_admin_user)
 ):
     """
-    由超級管理員建立一個新的教學機構。
+    由已登入的機構管理員，在自己所屬的機構下，建立一位新的教職員。
 
-    - **需要超級管理員(admin)權限**
+    - **權限**: `admin`
+    - **角色**: 可建立 `teacher`, `receptionist`, `admin` 等角色。
     """
-    # 檢查機構代碼是否已存在
-    db_institution = crud.get_institution_by_code(db, code=institution.code)
-    if db_institution:
-        raise HTTPException(status_code=400, detail="此機構代碼已被使用")
+    # 檢查手機號是否已被註冊
+    if crud.get_user_by_phone(db, phone_number=staff_data.phone_number):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="該手機號碼已被註冊，請使用其他號碼。"
+        )
     
-    return crud.create_institution(db=db, institution=institution)
+    # 檢查角色是否合法
+    allowed_roles = [models.UserRole.teacher, models.UserRole.receptionist, models.UserRole.admin]
+    if staff_data.role not in allowed_roles:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"無法建立此角色。允許的角色為: {', '.join(r.value for r in allowed_roles)}"
+        )
+
+    return crud.create_staff_user(
+        db=db, 
+        staff_data=staff_data, 
+        institution_id=current_admin.institution_id
+    )
+
+@router.post(
+    "/classes/", 
+    response_model=schemas.ClassOut, 
+    status_code=status.HTTP_201_CREATED,
+    summary="管理員新增班級"
+)
+def create_class_in_institution(
+    class_data: schemas.ClassCreate,
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_current_admin_user)
+):
+    """
+    由已登入的機構管理員，在自己所屬的機構下，建立一個新的班級。
+
+    - **權限**: `admin`
+    - **注意**: 如果提供了 `teacher_id`，系統不會自動驗證該老師是否存在或屬於同機構，
+      這部分驗證邏輯可以在未來加入或由前端輔助。
+    """
+    return crud.create_class(
+        db=db, 
+        class_data=class_data, 
+        institution_id=current_admin.institution_id
+    )
+
+# 注意：我們暫時移除了「建立機構」的 API。
+# 因為在多租戶系統中，「建立機構」通常由超級管理員完成，
+# 或者透過一個獨立的、更複雜的註冊流程來完成。
+# 我們可以稍後再把它加回來。
