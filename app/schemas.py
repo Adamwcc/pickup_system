@@ -64,7 +64,7 @@ class ClassCreate(BaseModel):
 # --- 老師 Teacher ---
 class ParentInvite(BaseModel):
     phone_number: str = Field(..., example="0912345678")
-    full_name: str = Field(..., example="王大明")
+    full_name:  Optional[str] = None
 
 class StudentCreate(BaseModel):
     full_name: str = Field(..., example="王小明")
