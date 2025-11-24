@@ -81,6 +81,16 @@ class ParentActivate(BaseModel):
     institution_code: str
     student_name: str
 
+
+# ===================================================================
+# User Self-Service (使用者自助服務)
+# ===================================================================
+
+class UserPasswordUpdate(BaseModel):
+    old_password: str
+    new_password: str = Field(min_length=8)
+    
+
 class PickupStart(BaseModel):
     student_id: int
 
@@ -94,4 +104,6 @@ class Token(BaseModel):
 
 class TokenData(BaseModel):
     phone_number: Optional[str] = None
+
+
 

@@ -15,6 +15,13 @@ def get_user_by_phone(db: Session, phone_number: str) -> models.User | None:
     """ 根據手機號碼獲取使用者。"""
     return db.query(models.User).filter(models.User.phone_number == phone_number).first()
 
+def update_user_password(db: Session, user: models.User, new_password: str) -> models.User:
+    """ 更新指定使用者的密碼。"""
+    user.hashed_password = security.get_password_hash(new_password)
+    db.commit()
+    db.refresh(user)
+    return user
+
 # ===================================================================
 # Institution (機構)
 # ===================================================================
