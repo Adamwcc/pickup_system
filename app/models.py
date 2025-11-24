@@ -93,6 +93,7 @@ class Student(Base):
     
     # 關聯
     class_ = relationship("Class", back_populates="students")
+    institution = relationship("Institution", back_populates="students")
     parents = relationship("User", secondary="parent_student_link", back_populates="children")
     notifications = relationship("PickupNotification", back_populates="student")
 
