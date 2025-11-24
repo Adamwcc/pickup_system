@@ -70,3 +70,43 @@ def create_class(db: Session, class_data: schemas.ClassCreate, institution_id: i
     db.refresh(db_class)
     return db_class
 
+# ===================================================================
+# Parent (家長)
+# ===================================================================
+
+def activate_parent_account(db: Session, user: models.User, password: str) -> models.User:
+    """
+    啟用一個 'invited' 狀態的家長帳號。
+    設定其密碼，並將狀態更新為 'active'。
+    """
+    user.hashed_password = security.get_password_hash(password)
+    user.status = models.UserStatus.active
+    db.commit()
+    db.refresh(user)
+    return user
+
+def get_student_by_name_and_institution(db: Session, student_name: str, institution_id: int) -> models.Student | None:
+    """ 根據學生姓名和機構ID，查詢活躍的學生。"""
+    return db.query(models.Student).join(models.Class).filter(
+        models.Student.full_name == student_name,
+        models.Class.institution_id == institution_id,
+        models.Student.is_active == True
+    ).first()
+
+def link_parent_to_student(db: Session, parent_id: int, student_id: int) -> models.ParentStudentLink | None:
+    """
+    建立家長與學生的綁定關係。
+    如果綁定已存在，則不重複建立。
+    """
+    # 檢查是否已存在完全相同的綁定
+    exact_link = db.query(models.ParentStudentLink).filter(
+        models.ParentStudentLink.parent_id == parent_id,
+        models.ParentStudentLink.student_id == student_id
+    ).first()
+    
+    if not exact_link:
+        new_link = models.ParentStudentLink(parent_id=parent_id, student_id=student_id)
+        db.add(new_link)
+        db.commit()
+        return new_link
+    return exact_link
