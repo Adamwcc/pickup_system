@@ -37,44 +37,24 @@ def login_for_access_token(
     return {"access_token": access_token, "token_type": "bearer"}
 
 
-@router.post("/activate", response_model=schemas.UserOut, summary="家長啟用帳號並綁定第一位學生")
-def activate_parent_account_and_claim_student(
-    activation_data: schemas.ParentActivate, # <--- 使用新的 Schema
+# vvv--- 家長首次綁定學生API ---vvv
+@router.post("/activate-parent", response_model=schemas.UserOut, summary="家長啟用帳號")
+def activate_parent(
+    activation_data: schemas.ParentActivation,
     db: Session = Depends(get_db)
 ):
     """
-    家長首次啟用帳號的流程，嚴格遵循'憲法'的雙重驗證。
-    1. 驗證機構代碼是否存在。
-    2. 驗證手機號是否為 'invited' 狀態。
-    3. 驗證該機構下是否有對應姓名的學生。
-    4. 如果全部通過，則啟用帳號、設定密碼，並建立綁定關係。
+    供家長首次使用時，啟用他們的 'invited' 帳號。
+
+    家長需要提供他們的手機號、自訂的密碼，以及他們孩子的機構代碼和姓名，
+    以驗證他們的身份。
     """
-    # 1. 驗證機構
-    institution = crud.get_institution_by_code(db, code=activation_data.institution_code)
-    if not institution:
-        raise HTTPException(status_code=404, detail="機構代碼不正確")
-
-    # 2. 驗證使用者
-    user = crud.get_user_by_phone(db, phone_number=activation_data.phone_number)
-    if not user or user.status != models.UserStatus.invited:
-        raise HTTPException(status_code=403, detail="此手機號碼未被邀請或帳號已啟用")
-
-    # 3. 驗證學生
-    student = crud.get_student_by_name_and_institution(
-        db, 
-        student_name=activation_data.student_name, 
-        institution_id=institution.id
-    )
-    if not student:
-        raise HTTPException(status_code=404, detail="在此機構下找不到該姓名的學生")
-
-    # 4. 執行啟用和綁定
-    activated_user = crud.activate_parent_account(db, user=user, password=activation_data.password)
-    crud.link_parent_to_student(db, parent_id=activated_user.id, student_id=student.id)
+    activated_user = crud.activate_parent_account(db, activation_data=activation_data)
     
-    # 將家長與機構關聯
-    activated_user.institution_id = institution.id
-    db.commit()
-    db.refresh(activated_user)
-
+    if not activated_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="啟用失敗：手機號碼、機構代碼或學生姓名不匹配，或帳號非待啟用狀態。",
+        )
+    
     return activated_user

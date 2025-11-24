@@ -82,6 +82,15 @@ class ParentActivate(BaseModel):
     student_name: str
 
 
+"""家長啟用帳號"""
+class ParentActivation(BaseModel):
+    """家長啟用帳號時，需要提供的資料。"""
+    phone_number: str = Field(..., description="家長的手機號碼")
+    password: str = Field(..., min_length=8, description="家長自訂的密碼")
+    institution_code: str = Field(..., description="機構的唯一代碼")
+    student_full_name: str = Field(..., description="家長其中一位孩子的姓名，用於驗證身份"
+
+
 # ===================================================================
 # User Self-Service (使用者自助服務)
 # ===================================================================
@@ -89,7 +98,7 @@ class ParentActivate(BaseModel):
 class UserPasswordUpdate(BaseModel):
     old_password: str
     new_password: str = Field(min_length=8)
-    
+
 
 class PickupStart(BaseModel):
     student_id: int

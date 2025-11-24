@@ -118,6 +118,41 @@ def link_parent_to_student(db: Session, parent_id: int, student_id: int) -> mode
         return new_link
     return exact_link
 
+def activate_parent_account(db: Session, activation_data: schemas.ParentActivation) -> Optional[models.User]:
+    """
+    啟用家長帳號的核心邏輯。
+    1. 驗證手機號是否存在，且狀態為 'invited'。
+    2. 驗證該家長是否確實與所提供的 '機構代碼' 和 '學生姓名' 的孩子相關聯。
+    3. 如果全部通過，則設定密碼，並將狀態更新為 'active'。
+    """
+    # 1. 尋找處於 'invited' 狀態的使用者
+    user = db.query(models.User).filter(
+        models.User.phone_number == activation_data.phone_number,
+        models.User.status == models.UserStatus.invited
+    ).first()
+
+    if not user:
+        return None  # 找不到符合條件的待啟用帳號
+
+    # 2. 驗證身份：檢查該使用者是否關聯了指定學生
+    student_found = False
+    for student in user.children:
+        if (student.institution.code == activation_data.institution_code and
+            student.full_name == activation_data.student_full_name):
+            student_found = True
+            break
+    
+    if not student_found:
+        return None # 提供的學生資訊不匹配
+
+    # 3. 更新使用者資訊
+    user.hashed_password = security.get_password_hash(activation_data.password)
+    user.status = models.UserStatus.active
+    db.commit()
+    db.refresh(user)
+    
+    return user
+
 # ===================================================================
 # Student & Teacher (學生與老師)
 # ===================================================================
