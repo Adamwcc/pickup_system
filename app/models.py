@@ -3,6 +3,8 @@
 
 from sqlalchemy import Column, Integer, String, Enum, DateTime, ForeignKey, Boolean
 from sqlalchemy.orm import relationship
+from sqlalchemy.ext.associationproxy import association_proxy
+
 from .database import Base
 import enum
 from datetime import datetime
@@ -87,16 +89,20 @@ class Student(Base):
     id = Column(Integer, primary_key=True, index=True)
     full_name = Column(String, index=True, nullable=False)
     status = Column(Enum(StudentStatus), default=StudentStatus.departed, nullable=False)
-    is_active = Column(Boolean, default=True, nullable=False) # 用於標記是否畢業/退學
+    is_active = Column(Boolean, default=True, nullable=False)
     
-    class_id = Column(Integer, ForeignKey("classes.id"), nullable=False) # 學生必須屬於一個班級
+    class_id = Column(Integer, ForeignKey("classes.id"), nullable=False)
     
     # 關聯
     class_ = relationship("Class", back_populates="students")
-    institution = relationship("Institution", back_populates="students")
+    
+    # vvv--- 用下面這行 association_proxy，替換掉舊的 institution = relationship(...) ---vvv
+    institution = association_proxy("class_", "institution")
+    # ^^^--- 替換結束 ---^^^
+    
     parents = relationship("User", secondary="parent_student_link", back_populates="children")
     notifications = relationship("PickupNotification", back_populates="student")
-
+    
 # ===================================================================
 # 中間表與附屬模型
 # ===================================================================
