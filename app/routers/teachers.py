@@ -57,3 +57,40 @@ def create_student_by_teacher(
         student_data=student_data,
         operator_id=current_user.id # 記錄操作者
     )
+
+
+# 老師為學生解除家長綁定
+@router.delete("/students/{student_id}/parents/{parent_id}", status_code=status.HTTP_204_NO_CONTENT)
+def unbind_parent_from_student_by_teacher(
+    student_id: int,
+    parent_id: int,
+    db: Session = Depends(get_db),
+    current_teacher: models.User = Depends(security.get_current_active_teacher) # 假設您有這個依賴項
+):
+    """【老師/管理員】為指定學生，解除與指定家長的綁定。"""
+    # 可以在這裡加入老師是否屬於該機構的驗證
+    success = crud.unbind_student_from_parent_by_ids(
+        db=db, 
+        parent_id=parent_id, 
+        student_id=student_id
+    )
+    if not success:
+        raise HTTPException(status_code=404, detail="找不到指定的學生或家長，或他們之間沒有綁定關係")
+    return
+
+
+# 老師刪除學生
+@router.delete("/students/{student_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_student_by_teacher(
+    student_id: int,
+    db: Session = Depends(get_db),
+    current_teacher: models.User = Depends(security.get_current_active_teacher)
+):
+    """【老師/管理員】刪除一個學生。"""
+    # 可以在這裡加入老師是否屬於該機構的驗證
+    deleted_student = crud.delete_student_by_id(db=db, student_id=student_id)
+    
+    if not deleted_student:
+        raise HTTPException(status_code=404, detail="找不到指定的學生")
+    return
+

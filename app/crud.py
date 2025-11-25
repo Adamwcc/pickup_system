@@ -275,3 +275,66 @@ def get_student_by_name_and_institution(db: Session, name: str, institution_code
     ).first()
 
 # ^^^--- 新函式結束 ---^^^
+
+
+# ===================================================================
+# Unbind and Delete (學生與老師)
+# ===================================================================
+
+# 解除綁定API核心
+
+def unbind_student_from_parent_by_ids(db: Session, *, student_id: int, parent_id: int) -> bool:
+    """
+    【通用核心函式】根據學生ID和家長ID，解除他們之間的綁定。
+    這是一個底層函式，供不同權限的 API 呼叫。
+    """
+    # 步驟 1: 找到家長和學生
+    parent = db.query(models.User).filter(models.User.id == parent_id).first()
+    student = db.query(models.Student).filter(models.Student.id == student_id).first()
+
+    # 步驟 2: 驗證兩者是否存在
+    if not parent or not student:
+        # 在這裡返回 False，讓上層 API 決定如何回應 (e.g., 404)
+        return False
+
+    # 步驟 3: 驗證關聯是否存在
+    if student not in parent.children:
+        return False
+
+    # 步驟 4: 執行解除綁定
+    parent.children.remove(student)
+    db.add(parent)
+    db.commit()
+    
+    return True
+
+#刪除學生API
+def delete_student_by_id(db: Session, *, student_id: int) -> models.Student | None:
+    """【通用核心函式】根據ID刪除一個學生。"""
+    student_to_delete = db.query(models.Student).filter(models.Student.id == student_id).first()
+    
+    if not student_to_delete:
+        return None
+        
+    # SQLAlchemy 會自動處理 parent_student_link 中間表的刪除
+    db.delete(student_to_delete)
+    db.commit()
+    
+    return student_to_delete
+
+# 刪除使用者(Delete User)
+def delete_user_by_id(db: Session, *, user_id: int) -> models.User | None:
+    """【通用核心函式】根據ID刪除一個使用者。"""
+    user_to_delete = db.query(models.User).filter(models.User.id == user_id).first()
+    
+    if not user_to_delete:
+        return None
+        
+    # SQLAlchemy 會自動處理相關的關聯（如 parent_student_link, class.teacher_id 等）
+    # 注意：您可能需要為 ForeignKey 設置 ondelete='SET NULL' 或 'CASCADE' 來達到預期效果
+    db.delete(user_to_delete)
+    db.commit()
+    
+    return user_to_delete
+
+

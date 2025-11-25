@@ -92,6 +92,26 @@ def create_class_in_institution(
         institution_id=current_admin.institution_id
     )
 
+# 刪除使用者(Delete User)
+
+@router.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_user_by_admin(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(security.get_current_active_admin) # 假設您有這個依賴項
+):
+    """【管理員】刪除任何使用者（家長、老師、其他管理員）。"""
+    # 增加一個保護，防止管理員刪除自己
+    if current_admin.id == user_id:
+        raise HTTPException(status_code=400, detail="管理員不能刪除自己")
+
+    deleted_user = crud.delete_user_by_id(db=db, user_id=user_id)
+    
+    if not deleted_user:
+        raise HTTPException(status_code=404, detail="找不到指定的使用者")
+    return
+
+
 # 注意：我們暫時移除了「建立機構」的 API。
 # 因為在多租戶系統中，「建立機構」通常由超級管理員完成，
 # 或者透過一個獨立的、更複雜的註冊流程來完成。

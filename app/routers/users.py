@@ -47,3 +47,21 @@ def bind_additional_child(
         child_info=binding_data
     )
     return updated_user
+
+
+# 家長解除綁定孩子
+@router.delete("/me/children/{student_id}", status_code=status.HTTP_204_NO_CONTENT)
+def unbind_my_child(
+    student_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(security.get_current_active_user)
+):
+    """【家長】主動解除與某個子女的綁定。"""
+    success = crud.unbind_student_from_parent_by_ids(
+        db=db, 
+        parent_id=current_user.id, 
+        student_id=student_id
+    )
+    if not success:
+        raise HTTPException(status_code=404, detail="找不到您與該學生的綁定關係")
+    return
