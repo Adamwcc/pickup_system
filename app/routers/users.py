@@ -10,8 +10,6 @@ from .. import crud, models, schemas, security
 from ..dependencies import get_db
 
 router = APIRouter(
-    prefix="/api/v1/users",
-    tags=["users"],
     dependencies=[Depends(security.get_current_active_user)], # <--- 將通用依賴放在這裡
     responses={404: {"description": "Not found"}},
 )
