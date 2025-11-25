@@ -39,7 +39,7 @@ def get_current_teacher_or_higher(current_user: models.User = Depends(security.g
 def create_student_by_teacher(
     student_data: schemas.StudentCreate,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_teacher_or_higher)
+    current_user: models.User = Depends(get_current_active_teacher)
 ):
     """
     由已登入的教職員，在自己所屬的機構下，建立一位新學生，並可選擇性地邀請家長。
