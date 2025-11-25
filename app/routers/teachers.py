@@ -1,6 +1,5 @@
 # 檔案路徑: app/routers/teachers.py
-# 版本：基於新憲法的 v2.0
-# 說明：實現了教職員的核心 API，例如建立學生。
+# 版本：v2.1 - 重構為統一使用 security 模組的權限依賴項
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -9,25 +8,12 @@ from typing import List
 from .. import crud, models, schemas, security
 from ..dependencies import get_db
 
-router = APIRouter()
+# vvv--- 這是我們要修改的地方 ---vvv
+# 移除本地的 get_current_teacher_or_higher 函式
 
-# --- 權限依賴項 ---
-def get_current_teacher_or_higher(current_user: models.User = Depends(security.get_current_active_user)):
-    """
-    一個依賴項，用於驗證當前使用者是否為 'teacher', 'receptionist', 或 'admin'。
-    """
-    allowed_roles = [models.UserRole.teacher, models.UserRole.receptionist, models.UserRole.admin]
-    if current_user.role not in allowed_roles:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="權限不足：此操作需要教職員權限。"
-        )
-    if not current_user.institution_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="操作失敗：您的帳號未歸屬任何機構。"
-        )
-    return current_user
+router = APIRouter()
+# ^^^--- 修改結束 ---^^^
+
 
 # --- API 端點 ---
 @router.post(
@@ -39,36 +25,38 @@ def get_current_teacher_or_higher(current_user: models.User = Depends(security.g
 def create_student_by_teacher(
     student_data: schemas.StudentCreate,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_active_teacher)
+    # 【修正】: 統一使用 security 的依賴項，並保持變數名一致
+    current_teacher: models.User = Depends(security.get_current_active_teacher)
 ):
     """
-    由已登入的教職員，在自己所屬的機構下，建立一位新學生，並可選擇性地邀請家長。
-
-    - **權限**: `teacher`, `receptionist`, `admin`
-    - **核心邏輯**:
-      - 學生會被建立在指定的 `class_id` 之下。
-      - 系統會自動為 `parents` 列表中的家長建立 `invited` 狀態的預註冊帳號。
+    由已登入的教職員，在自己所屬的機構下，建立一位新學生。
     """
-    # 可以在此加入驗證：檢查 student_data.class_id 是否屬於 current_user 所在的機構
-    # (為保持流程簡潔，此處暫不實作)
-
-    return crud.create_student(
+    # 【新增】: 可以在此加入對 institution_id 的檢查
+    if not current_teacher.institution_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="操作失敗：您的帳號未歸屬任何機構。"
+        )
+    
+    # 在 crud.create_student 中處理業務邏輯
+    # 注意：您之前的程式碼呼叫了 crud.create_student，但我們之前定義的是 crud.create_student_with_parents
+    # 這裡我假設您指的是後者。
+    return crud.create_student_with_parents(
         db=db,
         student_data=student_data,
-        operator_id=current_user.id # 記錄操作者
+        teacher=current_teacher 
     )
 
 
-# 老師為學生解除家長綁定
 @router.delete("/students/{student_id}/parents/{parent_id}", status_code=status.HTTP_204_NO_CONTENT)
 def unbind_parent_from_student_by_teacher(
     student_id: int,
     parent_id: int,
     db: Session = Depends(get_db),
-    current_teacher: models.User = Depends(security.get_current_active_teacher) # 假設您有這個依賴項
+    # 【確認】: 這裡的用法是正確的
+    current_teacher: models.User = Depends(security.get_current_active_teacher)
 ):
     """【老師/管理員】為指定學生，解除與指定家長的綁定。"""
-    # 可以在這裡加入老師是否屬於該機構的驗證
     success = crud.unbind_student_from_parent_by_ids(
         db=db, 
         parent_id=parent_id, 
@@ -79,18 +67,16 @@ def unbind_parent_from_student_by_teacher(
     return
 
 
-# 老師刪除學生
 @router.delete("/students/{student_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_student_by_teacher(
     student_id: int,
     db: Session = Depends(get_db),
+    # 【確認】: 這裡的用法是正確的
     current_teacher: models.User = Depends(security.get_current_active_teacher)
 ):
     """【老師/管理員】刪除一個學生。"""
-    # 可以在這裡加入老師是否屬於該機構的驗證
     deleted_student = crud.delete_student_by_id(db=db, student_id=student_id)
     
     if not deleted_student:
         raise HTTPException(status_code=404, detail="找不到指定的學生")
     return
-
