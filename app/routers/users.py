@@ -40,3 +40,28 @@ def update_my_password(
 # 根據新憲法，家長認領學生的功能被移至一個獨立的 API，
 # 而不是放在 /users/me/children，這樣更符合 RESTful 設計。
 # 我們將在下一個階段重構 teachers 路由時，一併加入「家長認領學生」的 API。
+
+
+# ---------家長認領學生」的 API-------
+@router.post("/me/children", response_model=schemas.User)
+def bind_additional_child(
+    *,
+    db: Session = Depends(get_db),
+    binding_data: schemas.ChildBindingCreate, # binding_data 現在包含了 parent_phone_number
+    current_user: models.User = Depends(get_current_active_user)
+):
+    """
+    為當前登入的家長綁定一個額外的子女。
+
+    【安全驗證邏輯】:
+    - 學生必須存在於指定的機構中。
+    - 家長提供的 `parent_phone_number` 必須與系統中為該學生預留的家長手機號一致。
+    - 學生尚未被任何其他 'active' 狀態的家長綁定。
+    - 當前家長尚未綁定此學生。
+    """
+    updated_user = crud.bind_child_to_parent(
+        db=db, 
+        parent=current_user, 
+        child_info=binding_data
+    )
+    return updated_user

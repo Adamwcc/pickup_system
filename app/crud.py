@@ -1,6 +1,7 @@
 # 檔案路徑: app/crud.py
 # 版本：基於新憲法的 v2.0
 # 說明：提供了機構、教職員、班級的核心 CRUD 操作。
+from fastapi import HTTPException
 from typing import List, Optional 
 from sqlalchemy.orm import Session
 from typing import List
@@ -211,3 +212,66 @@ def create_student(db: Session, student_data: schemas.StudentCreate, operator_id
     db.commit()
     db.refresh(db_student)
     return db_student
+
+
+    # vvv--- 家長綁定孩子 ---vvv
+def bind_child_to_parent(db: Session, *, parent: models.User, child_info: schemas.ChildBindingCreate) -> models.User:
+    """
+    將一個學生綁定到指定的家長帳號下，支援最多兩位家長綁定。
+
+    驗證流程:
+    1. 尋找學生：確認學生是否存在於指定機構。
+    2. 權限驗證：確認請求者提供的手機號，是否與系統為該學生預留的任一家長手機號匹配。
+    3. 綁定上限檢查：確認該學生已被綁定的 active 家長數量是否已達上限 (2位)。
+    4. 重複綁定檢查：確認當前家長是否已經綁定過此學生。
+    5. 執行綁定：將學生添加到家長的 children 列表中。
+    """
+    # 步驟 1: 尋找學生
+    # 我們需要一個新的 crud 函式來完成這件事，我們先假設它存在
+    student_to_bind = get_student_by_name_and_institution(
+        db, 
+        name=child_info.student_full_name, 
+        institution_code=child_info.institution_code
+    )
+    if not student_to_bind:
+        raise HTTPException(status_code=404, detail="找不到指定的學生或機構代碼不匹配")
+
+    # 步驟 2: 權限驗證 (手機號驗證)
+    # 檢查該學生所有關聯的家長(不論 active 或 invited)
+    # 是否有任何一個的手機號與請求者提供的號碼匹配
+    can_bind = False
+    for associated_parent in student_to_bind.parents:
+        if associated_parent.phone_number == child_info.parent_phone_number:
+            can_bind = True
+            break
+    
+    if not can_bind:
+        raise HTTPException(status_code=403, detail="驗證失敗，您提供的家長手機號與系統預留資訊不符")
+
+    # 步驟 3: 綁定上限檢查
+    active_parents_count = sum(1 for p in student_to_bind.parents if p.status == models.UserStatus.active)
+    
+    if active_parents_count >= 2:
+        raise HTTPException(status_code=409, detail="此學生已被綁定，已達人數上限")
+
+    # 步驟 4: 重複綁定檢查
+    if student_to_bind in parent.children:
+        raise HTTPException(status_code=409, detail="您已經綁定過此學生")
+
+    # 步驟 5: 執行綁定
+    parent.children.append(student_to_bind)
+    db.add(parent)
+    db.commit()
+    db.refresh(parent)
+    
+    return parent
+
+# vvv--- 我們還需要一個輔助函式來查找學生 ---vvv
+def get_student_by_name_and_institution(db: Session, name: str, institution_code: str) -> Optional[models.Student]:
+    """ 根據學生姓名和機構代碼查找學生 """
+    return db.query(models.Student).join(models.Student.class_).join(models.Class.institution).filter(
+        models.Student.full_name == name,
+        models.Institution.code == institution_code
+    ).first()
+
+# ^^^--- 新函式結束 ---^^^

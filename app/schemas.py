@@ -90,6 +90,13 @@ class ParentActivation(BaseModel):
     institution_code: str = Field(..., description="機構的唯一代碼")
     student_full_name: str = Field(..., description="家長其中一位孩子的姓名，用於驗證身份")
 
+    """家長要新增綁定孩子時，需要提供的資料。"""
+class ChildBindingCreate(BaseModel):
+    student_full_name: str = Field(..., description="要綁定的學生全名")
+    institution_code: str = Field(..., description="學生所在的機構代碼")
+    parent_phone_number: str = Field(..., description="老師為該學生預留的家長手機號，用於驗證")
+ 
+
 
 # ===================================================================
 # User Self-Service (使用者自助服務)
