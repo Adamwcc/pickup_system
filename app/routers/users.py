@@ -54,7 +54,7 @@ def bind_additional_child(
 def unbind_my_child(
     student_id: int,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(security.get_current_active_user)
+    current_user: models.User = Depends(security.get_current_active_parent)
 ):
     """【家長】主動解除與某個子女的綁定。"""
     success = crud.unbind_student_from_parent_by_ids(
