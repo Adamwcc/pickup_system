@@ -85,7 +85,9 @@ def create_class_in_institution(
         institution_id=current_admin.institution_id
     )
 
-@router.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/users/{user_id}", 
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="管理員職權:刪除使用者帳號")
 def delete_user_by_admin(
     user_id: int,
     db: Session = Depends(get_db),

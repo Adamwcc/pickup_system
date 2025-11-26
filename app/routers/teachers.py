@@ -48,7 +48,10 @@ def create_student_by_teacher(
     )
 
 
-@router.delete("/students/{student_id}/parents/{parent_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/students/{student_id}/parents/{parent_id}", 
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="教師職權:解除學生對家長的綁定"
+)
 def unbind_parent_from_student_by_teacher(
     student_id: int,
     parent_id: int,
@@ -67,7 +70,10 @@ def unbind_parent_from_student_by_teacher(
     return
 
 
-@router.delete("/students/{student_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/students/{student_id}", 
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="教師職權:刪除學生帳號"
+)
 def delete_student_by_teacher(
     student_id: int,
     db: Session = Depends(get_db),
