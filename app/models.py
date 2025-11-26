@@ -28,22 +28,13 @@ class UserStatus(str, enum.Enum):
     inactive = "inactive"    # 已停用/邏輯刪除
 
 class StudentStatus(str, enum.Enum):
-    """ 
-    學生狀態 (每日會被重置) - v2.0
-    定義了學生在安親班一天的完整生命週期。
-    """
-    # 【新狀態】每日 00:00 自動重置為此狀態
-    NOT_ARRIVED = "未進班"
-    # 老師點名後
-    ARRIVED = "已進班"
-    # 學生完成作業後
-    READY_FOR_PICKUP = "可以接送"
-    # 學生需要更多時間
-    HOMEWORK_PENDING = "作業未完成"
-    # 家長發起接送後
-    PARENT_EN_ROUTE = "家長已出發"
-    # 【新狀態】老師確認學生被接走後
-    PICKUP_COMPLETED = "完成接送"
+    """ 學生狀態 (內部統一使用英文) """
+    NOT_ARRIVED = "NOT_ARRIVED"
+    ARRIVED = "ARRIVED"
+    READY_FOR_PICKUP = "READY_FOR_PICKUP"
+    HOMEWORK_PENDING = "HOMEWORK_PENDING"
+    PARENT_EN_ROUTE = "PARENT_EN_ROUTE"
+    PICKUP_COMPLETED = "PICKUP_COMPLETED"
 
 # ===================================================================
 # 主要模型 (Primary Models)

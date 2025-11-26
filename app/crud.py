@@ -190,7 +190,7 @@ def create_student(db: Session, student_data: schemas.StudentCreate) -> models.S
         full_name=student_data.full_name,
         class_id=student_data.class_id,
         is_active=True,
-        status=models.StudentStatus.NOT_ARRIVED.value
+        status=models.StudentStatus.NOT_ARRIVED
     )
     db.add(db_student)
     db.flush()
