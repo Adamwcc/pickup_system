@@ -343,16 +343,19 @@ def start_pickup_process(
     )
     db.add(notification)
 
-    # 步驟 5: 【未來】觸發 WebSocket 廣播
-    # 在 websocket.py 完善後，我們會在這裡呼叫它
-    # websocket_manager.broadcast_to_institution(
-    #     institution_id=student.institution.id,
-    #     message={"type": "PICKUP_STARTED", "student_name": student.full_name, "parent_name": parent.full_name}
-    # )
+    # vvv--- 【關鍵修正】 ---vvv
+    # 步驟 5.1: 觸發對家長的推播
+    notifications.send_push_to_parents(
+        parents=student.parents,
+        title="已收到您的接送請求",
+        body=f"您已出發接送 {student.full_name}，安親班已收到通知，會預先為孩子準備。"
+    )
+
+    # 步驟 5.2: 觸發對機構的 WebSocket 廣播
     print(f"--- WEBSOCKET BROADCAST to institution [{student.institution.id}] ---")
     print(f"  Message: {student.full_name} 的家長 {parent.full_name} 已出發接送！")
     print(f"-----------------------------------------------------------------")
-
+    # ^^^--- 修正結束 ---^^^
 
     db.commit()
     db.refresh(student)
