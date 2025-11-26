@@ -4,6 +4,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
+from Pydantic import BaseModel
 
 from .. import crud, models, schemas, security
 from ..dependencies import get_db
