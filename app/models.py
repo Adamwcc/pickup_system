@@ -28,12 +28,22 @@ class UserStatus(str, enum.Enum):
     inactive = "inactive"    # 已停用/邏輯刪除
 
 class StudentStatus(str, enum.Enum):
-    """ 學生狀態 (每日會被重置) """
-    departed = "已離校"         # 預設狀態
-    in_class = "在班"           # 到班點名後
-    can_be_picked_up = "可接送" # 完成作業後
-    homework_pending = "作業較多" # 作業未完成
-    parent_is_coming = "家長已出發" # 家長發起接送後
+    """ 
+    學生狀態 (每日會被重置) - v2.0
+    定義了學生在安親班一天的完整生命週期。
+    """
+    # 【新狀態】每日 00:00 自動重置為此狀態
+    NOT_ARRIVED = "未進班"
+    # 老師點名後
+    ARRIVED = "已進班"
+    # 學生完成作業後
+    READY_FOR_PICKUP = "可以接送"
+    # 學生需要更多時間
+    HOMEWORK_PENDING = "作業未完成"
+    # 家長發起接送後
+    PARENT_EN_ROUTE = "家長已出發"
+    # 【新狀態】老師確認學生被接走後
+    PICKUP_COMPLETED = "完成接送"
 
 # ===================================================================
 # 主要模型 (Primary Models)
@@ -88,7 +98,7 @@ class Student(Base):
     __tablename__ = "students"
     id = Column(Integer, primary_key=True, index=True)
     full_name = Column(String, index=True, nullable=False)
-    status = Column(Enum(StudentStatus), default=StudentStatus.departed, nullable=False)
+    status = Column(Enum(StudentStatus), default=StudentStatus.NOT_ARRIVED, nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
     
     class_id = Column(Integer, ForeignKey("classes.id"), nullable=False)

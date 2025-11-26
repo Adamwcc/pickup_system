@@ -42,7 +42,7 @@ class StudentOut(BaseModel):
         from_attributes = True
         populate_by_name = True # 允許 alias
 
-        
+
 class UserDetail(UserOut):
     """
     繼承自 UserOut，並包含更詳細的關聯資料，例如子女列表。
@@ -128,6 +128,3 @@ class Token(BaseModel):
 
 class TokenData(BaseModel):
     phone_number: Optional[str] = None
-
-
-
