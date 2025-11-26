@@ -373,10 +373,13 @@ def update_pickup_eta(
         raise HTTPException(status_code=403, detail="權限不足：您未綁定此學生")
 
     # 【未來】觸發 WebSocket 廣播
+    # vvv--- 【修正】刪除這一行前面的星號 '*' ---vvv
     # websocket_manager.broadcast_to_institution(
     #     institution_id=student.institution.id,
-    *   message={"type": "ETA_UPDATE", "student_name": student.full_name, "minutes_remaining": minutes_remaining}
+    #     message={"type": "ETA_UPDATE", "student_name": student.full_name, "minutes_remaining": minutes_remaining}
     # )
+    # ^^^--- 修正結束 ---^^^
+    
     print(f"--- WEBSOCKET BROADCAST to institution [{student.institution.id}] ---")
     print(f"  Message: {student.full_name} 的家長預計還有 {minutes_remaining} 分鐘到達！")
     print(f"-----------------------------------------------------------------")
