@@ -98,7 +98,7 @@ class Student(Base):
     __tablename__ = "students"
     id = Column(Integer, primary_key=True, index=True)
     full_name = Column(String, index=True, nullable=False)
-    status = Column(Enum(StudentStatus), default=StudentStatus.NOT_ARRIVED, nullable=False)
+    status = Column(Enum(StudentStatus), default=models.StudentStatus.NOT_ARRIVED.value, nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
     
     class_id = Column(Integer, ForeignKey("classes.id"), nullable=False)
