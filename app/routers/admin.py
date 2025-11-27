@@ -5,6 +5,10 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
 
+import subprocess
+import sys
+from app.core.logging_config import get_logger
+
 from .. import crud, models, schemas, security
 from ..dependencies import get_db
 
@@ -12,6 +16,7 @@ from ..dependencies import get_db
 # 移除本地的 get_current_admin_user 函式，因為它的功能已由 security.py 提供
 
 router = APIRouter()
+logger = get_logger(__name__)
 # ^^^--- 修改結束 ---^^^
 
 
@@ -103,3 +108,77 @@ def delete_user_by_admin(
     if not deleted_user:
         raise HTTPException(status_code=404, detail="找不到指定的使用者")
     return
+
+@router.post("/trigger-daily-reset", summary="手動觸發每日狀態重置")
+def trigger_daily_reset(
+    # 我們也應該保護這個端點，確保只有管理員能觸發
+    current_admin: models.User = Depends(security.get_current_active_admin)
+):
+    """
+    手動觸發每日狀態重置腳本。
+    這是一個管理員操作，用於測試或手動校正。
+    """
+    logger.info(f"管理員 {current_admin.full_name} (ID: {current_admin.id}) 正在觸發 [每日狀態重置] 腳本。")
+    script_path = "scripts/daily_reset.py"
+    try:
+        result = subprocess.run(
+            [sys.executable, script_path],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        logger.info(f"腳本 {script_path} 成功執行。輸出:\n{result.stdout}")
+        return {"status": "success", "message": f"Successfully triggered {script_path}."}
+    except subprocess.CalledProcessError as e:
+        logger.error(
+            f"執行腳本 {script_path} 失敗！觸發者: {current_admin.full_name}。返回碼: {e.returncode}\n"
+            f"標準輸出 (stdout):\n{e.stdout}\n"
+            f"標準錯誤 (stderr):\n{e.stderr}"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to execute script. Check server logs for details."
+        )
+    except FileNotFoundError:
+        logger.error(f"觸發失敗：找不到腳本檔案 {script_path}。")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Script file not found: {script_path}"
+        )
+
+@router.post("/trigger-daily-check", summary="手動觸發每日健康檢查")
+def trigger_daily_check(
+    # 同樣保護這個端點
+    current_admin: models.User = Depends(security.get_current_active_admin)
+):
+    """
+    手動觸發每日健康檢查腳本。
+    這是一個管理員操作，用於測試或手動校正。
+    """
+    logger.info(f"管理員 {current_admin.full_name} (ID: {current_admin.id}) 正在觸發 [每日健康檢查] 腳本。")
+    script_path = "scripts/daily_check.py"
+    try:
+        result = subprocess.run(
+            [sys.executable, script_path],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        logger.info(f"腳本 {script_path} 成功執行。輸出:\n{result.stdout}")
+        return {"status": "success", "message": f"Successfully triggered {script_path}."}
+    except subprocess.CalledProcessError as e:
+        logger.error(
+            f"執行腳本 {script_path} 失敗！觸發者: {current_admin.full_name}。返回碼: {e.returncode}\n"
+            f"標準輸出 (stdout):\n{e.stdout}\n"
+            f"標準錯誤 (stderr):\n{e.stderr}"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to execute script. Check server logs for details."
+        )
+    except FileNotFoundError:
+        logger.error(f"觸發失敗：找不到腳本檔案 {script_path}。")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Script file not found: {script_path}"
+        )

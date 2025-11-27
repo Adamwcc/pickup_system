@@ -1,8 +1,9 @@
 # 檔案路徑: app/main.py
-
+from app.core import logging_config
 from fastapi import FastAPI
 from .database import engine, Base
 from .routers import auth, users, admin, teachers  # <--- 確保 admin 在這裡
+
 
 # Base.metadata.create_all(bind=engine) # 我們現在使用 Alembic，不再需要這一行
 
