@@ -182,3 +182,15 @@ def trigger_daily_check(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Script file not found: {script_path}"
         )
+
+
+# ... (在 admin.py 的末尾，臨時添加以下程式碼)
+
+@router.get("/test-500-error", summary="測試 500 內部伺服器錯誤")
+def test_500_error():
+    """
+    這個端點，會故意觸發一個 ZeroDivisionError，用於測試我們的全域異常處理中介軟體。
+    """
+    logger.info("正在觸發一個用於測試的 500 錯誤...")
+    result = 1 / 0 # 這將會拋出一個 ZeroDivisionError
+    return {"message": "You should not see this."} # 這一行永遠不會被執行
